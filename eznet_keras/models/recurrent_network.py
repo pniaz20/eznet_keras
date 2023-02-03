@@ -173,20 +173,15 @@ class Recurrent_Network(KerasSmartModel):
         _kwargs = {'units':self._H_cell, 'dropout':self._rnndropout, 
             'return_sequences':(True if self._rnndepth > 1 else self._final_rnn_return_sequences), 
             'kernel_regularizer':(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg else None)}
-        _kwargs_init = _kwargs.copy()
-        _kwargs_init.update({'input_shape':(self._L_in,self._H_in)})
         if self._rnn_params: 
-            _kwargs_init.update(self._rnn_params)
             _kwargs.update(self._rnn_params)
-        self.net.add(tf.keras.layers.Bidirectional(self._rnn(**_kwargs_init)) if self._bidirectional else self._rnn(**_kwargs_init))
-        if self._rnndepth > 1:
-            for i in range(self._rnndepth-1):
-                if i != self._rnndepth-2:
-                    _kwargs.update({'return_sequences':True})
-                    self.net.add(tf.keras.layers.Bidirectional(self._rnn(**_kwargs)) if self._bidirectional else self._rnn(**_kwargs))
-                else:
-                    _kwargs.update({'return_sequences':self._final_rnn_return_sequences})
-                    self.net.add(tf.keras.layers.Bidirectional(self._rnn(**_kwargs)) if self._bidirectional else self._rnn(**_kwargs))
+        self.net.add(tf.keras.Input((self._L_in,self._H_in)))
+        for i in range(self._rnndepth):
+            if i != self._rnndepth-1:
+                _kwargs.update({'return_sequences':True})
+            else:
+                _kwargs.update({'return_sequences':self._final_rnn_return_sequences})
+            self.net.add(tf.keras.layers.Bidirectional(self._rnn(**_kwargs)) if self._bidirectional else self._rnn(**_kwargs))
         
         # If the final RNN layer returns sequences, and we are NOT applying the dense on each time step of it, then the returned sequence must be flattened before being decocded.
         if self._final_rnn_return_sequences and not self._apply_dense_for_each_timestep:
@@ -235,3 +230,11 @@ class Recurrent_Network(KerasSmartModel):
     
     def call(self, x, *args, **kwargs):
         return self.net(x, *args, **kwargs)
+
+
+
+if __name__ == '__main__':
+    hparams = Recurrent_Network.sample_hparams
+    hparams['rnn_bidirectional'] = True
+    model = Recurrent_Network(hparams)
+    model.summary()
