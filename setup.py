@@ -6,7 +6,7 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
-VERSION = '0.0.2' 
+VERSION = '0.0.3' 
 DESCRIPTION = "Easily build Keras models: utils for training/testing, built-in ANN, CNN, RNN models, modular Dense and Conv blocks, etc."
 
 # Setting up
@@ -26,7 +26,7 @@ setup(
         python_requires=">=3.7, <4",
         license='MIT',
         install_requires=[
-            'numpy','matplotlib','tensorflow(>=2.4,<2.11)'
+            'numpy','matplotlib','tensorflow(>=2.4)'
         ],
         keywords=['tensorflow','keras','deep learning','neural network','keras2cpp'],
         classifiers= [
