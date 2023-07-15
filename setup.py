@@ -6,12 +6,12 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
-VERSION = '0.0.3' 
-DESCRIPTION = "Easily build Keras models: utils for training/testing, built-in ANN, CNN, RNN models, modular Dense and Conv blocks, etc."
+VERSION = '1.0.0' 
+DESCRIPTION = "Easily build Keras models: utils for training/testing, built-in ANN, CNN, RNN models, modular Dense and Convolutional blocks, etc."
 
 # Setting up
 setup(
-       # the name must match the folder name
+        # the name must match the folder name
         name="eznet_keras", 
         version=VERSION,
         author="Pouya P. Niaz",

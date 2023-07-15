@@ -4,8 +4,8 @@ Keras (TensorFlow) implementation of **ezNet** ("easy net"), a package containin
 This implementation is for Keras (Tensorflow). See [Here](https://github.com/pniaz20/eznet_torch) for an identical PyTorch implementation.
 
 Author: Pouya P. Niaz (<pniaz20@ku.edu.tr> , <pouya.p.niaz@gmail.com>)  
-Version: 0.0.3  
-Last Update: Jan 20, 2023
+Version: 1.0.0  
+Last Update: July 15, 2023
 
 Install with:
 
@@ -63,13 +63,12 @@ sample_hparams = {
     'model_name': 'KerasSmartModel',                    # Name of the model
     'l2_reg': 0.0001,                                   # L2 regularization parameter
     'batch_size': 16,                                   # Mini-batch size
-    'epochs': 2,                                        # Maximum training epochs
+    'epochs': 40,                                       # Maximum training epochs
     'validation_data': [0.05,'trainset'],               # Portion of train set used for validation (if necessary)
-    'validation_tolerance_epochs': 10,                  # Validation patience for early stopping
+    'early_stopping_patience_epochs': 10,               # Validation patience for early stopping
     'learning_rate': 0.0001,                            # (Initial) Learning rate
-    'learning_rate_decay_gamma': 0.99,                  # Learning rate exponential decay gamma
+    'exponential decay rate': 0.99,                     # Learning rate exponential decay factor
     'loss_function': 'categorical_crossentropy',        # Loss function string
-    'loss_function_params': None,                       # Dictionary of parameters to pass to the loss function
     'metrics':['accuracy'],                             # List of metrics
     'optimizer': 'Adam',                                # Optimizer string
     'optimizer_params': None,                           # Dictionary of parameters to pass to the optimizer constructor
@@ -86,7 +85,7 @@ y_train = ...
 x_test = ...
 y_test = ...
 
-model.train(x_train, x_test, y_train, y_test, verbose=1, saveto="my_model", export="my_model.model")
+model.train_model(x_train, y_train, x_test, y_test, verbose=1, saveto="my_model", export="my_model.model")
 model.plot_history(metrics=['loss','val_loss'], fig_title='model loss', saveto="training_history.png")
 ```
 

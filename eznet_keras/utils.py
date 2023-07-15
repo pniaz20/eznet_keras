@@ -50,19 +50,20 @@ def make_path(path:str):
     return path
     
 
-def plot_keras_model_history(history:dict, metrics:list=['loss','val_loss'], 
-                             fig_title:str='model loss', saveto:str=None):
-    plt.figure(figsize=(15, 7))
+def plot_keras_model_history(history:dict, metrics:list=['loss'], fig_title:str='model loss', saveto:str=None, close_after_finish:bool=True):
+    plt.figure(figsize=(7, 5))
     plt.grid(True)
-    plt.plot(history[metrics[0]])
-    plt.plot(history[metrics[1]])
+    plt.plot(history[metrics[0]], label='training')
+    if len(metrics) > 1:
+        plt.plot(history[metrics[1]], label='validation')
     plt.title(fig_title)
     plt.ylabel(metrics[0])
     plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
+    plt.legend(loc='upper right')
     if saveto:
         plt.savefig(make_path(saveto), dpi=600)
+        if close_after_finish:
+            plt.close()
         
 
 def compile_keras_model(model, _batchsize:int, _learnrate:float, _optimizer:str, _loss:str, _metrics:list, 
@@ -84,12 +85,12 @@ def compile_keras_model(model, _batchsize:int, _learnrate:float, _optimizer:str,
     model.compile(optimizer=opt, loss=_loss, metrics=_metrics)
     
 
-def fit_keras_model(model, x_train, y_train, x_val, y_val, 
-    _batchsize:int, _epochs:int, _callbacks:list, verbose:bool=True, **kwargs):
+def fit_keras_model(model, x_train, y_train, x_val=None, y_val=None, 
+    _batchsize:int=None, _epochs:int=1, _callbacks:list=None, verbose:int=1, **kwargs):
     while True:
         try:
             history = model.fit(x_train, y_train, batch_size=_batchsize, epochs=_epochs, 
-                validation_data=(x_val, y_val), verbose=verbose, 
+                validation_data=((x_val, y_val) if x_val is not None and y_val is not None else None), verbose=verbose, 
                 callbacks=_callbacks, **kwargs)
             break
         except Exception as e:
@@ -131,20 +132,24 @@ def export_keras_model(model, path:str):
             print("Cannot export model using Keras2Cpp.")
     
 
-def test_keras_model_class(model_class):
+def test_keras_model_class(model_class, hparams:dict=None, save_and_export:bool=True):
     print("Constructing model...\n")
-    model = model_class()
+    model = model_class(hparams)
     print("Summary of model:")
     print(model.summary())
     print("\nGenerating random dataset...\n")
     (x_train, y_train) = generate_sample_batch(model)
     (x_val, y_val) = generate_sample_batch(model)
+    print("Trying forward pass on training data: ")
+    y = model(x_train)
+    print("\nOutput shape: ", y.shape)
     print("\nTraining model...\n")
-    model.train(x_train, x_val, y_train, y_val, 
-                verbose=True, saveto="test_"+model.hparams["model_name"], 
-                export="test_"+model.hparams["model_name"]+".model")
+    model.train_model(x_train, y_train, x_val, y_val, 
+                verbose=1, 
+                saveto=(("test_"+model.hparams["model_name"]) if save_and_export else None), 
+                export=(("test_"+model.hparams["model_name"]+".model") if save_and_export else None))
     print("\nEvaluating model...\n")
-    model.evaluate(x_val, y_val, verbose=True)
+    model.evaluate(x_val, y_val, verbose=1)
     print("Done.")
     
 
@@ -200,6 +205,7 @@ def calc_image_size(size_in:int, kernel_size:int, padding:int, stride:int, dilat
     **NOTE** grouping is not supported yet.
 
     ### Args:
+    
         - `size_in` (int|list): (list of) image input dimension(s).
         - `kernel_size` (int|list): (list of) kernel (or pool) size
         - `padding` (int|list): (list of) padding sizes, or string such as 'valid' and 'same'.
@@ -207,6 +213,7 @@ def calc_image_size(size_in:int, kernel_size:int, padding:int, stride:int, dilat
         - `dilation` (int|list): (list of) dilation rates.
 
     ### Returns:
+    
         int or list: Output image dimensions
     """
     if padding == 'same':
@@ -233,12 +240,14 @@ def generate_geometric_array(init, count, direction, powers_of_two=True):
     """Generate array filled with incrementally doubling/halving values, optionally with powers of two.
 
     ### Args:
-        `init` (int): The first value to begin.
-        `count` (int): Number of elements to generate.
-        `direction` (str): Direction of the array. Can be either 'up' or 'down', i.e. increasing or decreasing.
-        `powers_of_two` (bool, optional): Generate numbers that are powers of two. Defaults to True.
+    
+        - `init` (int): The first value to begin.
+        - `count` (int): Number of elements to generate.
+        - `direction` (str): Direction of the array. Can be either 'up' or 'down', i.e. increasing or decreasing.
+        - `powers_of_two` (bool, optional): Generate numbers that are powers of two. Defaults to True.
 
     ### Returns:
+    
         list: List containing elements
     """
     lst = []
@@ -264,17 +273,19 @@ def generate_array_for_hparam(
     This function is meant to be used in the body of the code of class constructors and other functions in the API.
 
     ### Args:
-        `hparam` (var): A specific hyperparameter, e.g., input by user to your network's constructor.
-        `count_if_not_list` (int): Number of elements to generate if `hparam` is not an array-like.
-        `hparam_name` (str, optional): Name of the hyperparameter. Defaults to 'parameter'.
-        `count_if_not_list_name` (str, optional): Name of the "count" that must be provided. Defaults to 'its count'.
-        `check_auto` (bool, optional): Check for the "auto" case. Defaults to False.
-        `init_for_auto` (int, optional): Initial value in case of "auto". Defaults to 2.
-        `powers_of_two_if_auto` (bool, optional): Generate powers of two in case of "auto". Defaults to True.
-        `direction_if_auto` (str, optional): Direction of geometric increment in case of "auto". Defaults to None.
-        This can be "up" or "down". If check_for_auto is True, then this argument must be specified.
+    
+        - `hparam` (var): A specific hyperparameter, e.g., input by user to your network's constructor.
+        - `count_if_not_list` (int): Number of elements to generate if `hparam` is not an array-like.
+        - `hparam_name` (str, optional): Name of the hyperparameter. Defaults to 'parameter'.
+        - `count_if_not_list_name` (str, optional): Name of the "count" that must be provided. Defaults to 'its count'.
+        - `check_auto` (bool, optional): Check for the "auto" case. Defaults to False.
+        - `init_for_auto` (int, optional): Initial value in case of "auto". Defaults to 2.
+        - `powers_of_two_if_auto` (bool, optional): Generate powers of two in case of "auto". Defaults to True.
+        - `direction_if_auto` (str, optional): Direction of geometric increment in case of "auto". Defaults to None.
+           This can be "up" or "down". If check_for_auto is True, then this argument must be specified.
 
     ### Returns:
+    
         list: List containing elements
     """
     assert count_if_not_list is not None, \
