@@ -358,7 +358,7 @@ class Conv_Network(KerasSmartModel):
         
         
         # Check to see if there will be an output layer
-        self._include_output_layer = hparams.get("include_output_layer")
+        self._include_output_layer = hparams.get("include_output_layer") if "include_output_layer" in hparams else True
         
         if self._include_output_layer:
             # Output hyperparameters
