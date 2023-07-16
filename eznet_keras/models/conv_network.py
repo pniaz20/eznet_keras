@@ -38,8 +38,9 @@ class Conv_Network(KerasSmartModel):
         "pool_stride": 1,
         "pool_params": None,
         "min_image_size": 4,
-        "flatten_before_dense": True,
+        "flatten_after_conv": True,
         # Fully connected blocks
+        "include_dense_layers": True,
         "dense_width": "auto",
         "dense_depth": 2,
         "dense_activation": "relu",
@@ -302,19 +303,23 @@ class Conv_Network(KerasSmartModel):
             # in_channels = out_channels
             input_image = output_image
             
-        # Flattening (Image embedding)
+        # Including Dense or Output layers
         self._dense_depth = hparams.get("dense_depth")
-        self._flatten_before_dense = hparams["flatten_before_dense"] if "flatten_before_dense" in hparams else \
+        self._include_dense_layers = hparams["include_dense_layers"] if "include_dense_layers" in hparams else \
             (self._dense_depth is not None and self._dense_depth > 0)
-        if self._flatten_before_dense:
+        self._include_output_layer = hparams["include_output_layer"] if "include_output_layer" in hparams else True
+        
+        # Flattening
+        self._flatten_after_conv = hparams["flatten_after_conv"] if "flatten_after_conv" in hparams else (len(self._output_shape)==1)
+        if self._flatten_after_conv:
             self.net.add(tf.keras.layers.Flatten())
             self._dense_input_size = np.prod(output_image) * out_channels
         else:
             self._dense_input_size = out_channels
         self.size_list.append([self._dense_input_size])
         
-        # Check to see if we will have dense layers
-        if self._dense_depth is not None and self._dense_depth > 0:
+        # Construct dense layers
+        if self._include_dense_layers:
             
             # Dense layers hyperparameters
             self._dense_width = hparams.get("dense_width")
@@ -355,11 +360,7 @@ class Conv_Network(KerasSmartModel):
                     # in_size = out_size
                     self.size_list.append([out_size])
         
-        
-        
-        # Check to see if there will be an output layer
-        self._include_output_layer = hparams.get("include_output_layer") if "include_output_layer" in hparams else True
-        
+        # Construct output layer
         if self._include_output_layer:
             # Output hyperparameters
             self._output_activation = hparams.get("output_activation")
