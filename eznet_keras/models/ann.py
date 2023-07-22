@@ -19,6 +19,7 @@ class ANN(KerasSmartModel):
         # Architecture parameters
         "width": 32,
         "depth": 2,
+        "hidden_params": None,
         "hidden_activation": "LeakyReLU",
         "hidden_activation_params": {'alpha': 0.1},
         "norm_layer_type":"BatchNormalization",
@@ -26,6 +27,7 @@ class ANN(KerasSmartModel):
         "norm_layer_params": None,
         "dropout": 0.2,
         "include_output_layer": True,
+        "output_dense_params": None,
         "output_activation": "Softmax",
         "output_activation_params": None,
         # Training procedure parameters
@@ -36,14 +38,19 @@ class ANN(KerasSmartModel):
         "early_stopping_patience_epochs": 2,
         "validation_data": [0.05,'trainset'],
         "l2_reg": 0.0001,
+        "l1_reg": None,
         "loss_function": "categorical_crossentropy",
+        "loss_function_params": None,
         'optimizer': 'Adam',
         'optimizer_params': None,
         'metrics': ['accuracy'],
+        "metrics_params": None,
         'checkpoint_path': None,
         'early_stopping_monitor': 'loss',
         'early_stopping_mode': 'min',
-        'early_stopping_value': 1.0e-6
+        'early_stopping_value': 1.0e-6,
+        'other_callbacks': None,
+        'custom_schedule': None
     }
     
     
@@ -84,6 +91,7 @@ class ANN(KerasSmartModel):
                 a number sets them all the same, and a list/array sets each hidden layer according to the list.
             - `depth` (int): Specifies the depth of the network (number of hidden layers).
                 It must be specified unless `width` is provided as a list. Then the depth will be inferred form it.
+            - `hidden_params` (dict): (list of) kwargs parameters for the hidden layer constructor, if any. Defaults to None. Will overwrite everything else if specified.
             - `hidden_activation` (str): (list of) Activations. It can be an activation function name ("relu","sigmoid","tanh", etc.), an activation layer name ("ReLU", 
                 "LeakyReLU", "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
             - `hidden_activation_params` (dict): (list of) kwargs parameters for the hidden layer activation constructor, if any. Ignored for any dense block if the activation is
@@ -94,6 +102,7 @@ class ANN(KerasSmartModel):
             - `norm_layer_params` (dict): (list of) Dictionaries of kwargs parameters for the normalization layers' constructors. Defaults to None.
             - `dropout` (float): (list of) the dropout rates after every hidden layer. It should be a probability value between 0 and 1, or None by default.
             - `include_output_layer` (bool): Whether to include an output layer at the end of the network. Defaults to True.
+            - `output_dense_params` (dict): Parameters for the output dense layer, if any. Defaults to None. Will overwrite everything else if specified.
             - `output_activation` (str): Activation of the output layer, if any. Defaults to None.
                 For classification problems, you may want to choose "sigmoid" or "softmax".
                 That being said, you usually don't need to specify an activation for the output layer at all, if e.g. 'from_logits' is used.
@@ -103,18 +112,28 @@ class ANN(KerasSmartModel):
             - `learning_rate` (float): Initial learning rate of training.
             - `exponential_decay_rate` (float): Exponential decay rate for learning rate, if any. Defaults to None.
             - `optimizer` (str): Optimizer. Examples: "Adam", "SGD" ,"RMSProp", etc. The name of any optimizer class in `tf.keras.optimizers` can be used, or a custom class.
+            This can also be a custom optimizer class (not instance), in which case `optimizer_params` can be specified for its constructor kwargs.
             - `optimizer_params` (dict): Additional parameters of the optimizer, if any. Defaults to None.
             - `batch_size` (int): Minibatch size for training.
             - `epochs` (int): Maximum number of epochs for training.
             - `early_stopping_patience_epochs` (int): Epochs to tolerate unimproved (val) loss, before early stopping.
             - `validation_data` (list): List of [validation_split, 'trainset'|'testset']. Defaults to None.
             - `l2_reg` (float): L2 regularization parameter. Defaults to None.
-            - `loss_function` (str): Loss function. Examples: "mse","binary_crossentropy", "categorical_crossentropy", etc. It can also be a loss function instance.
-            - `metrics` (list): list of metrics for Keras compilation, e.g. ['accuracy'].
+            - `l1_reg` (float): L1 regularization parameter. Defaults to None.
+            - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy", "categorical_crossentropy", etc.,
+                the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss class (not instance).
+            - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a lower-case name string.
+            - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as "mse" or "accuracy", the name of a 
+                `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class (not instance).
+            - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any. Ignored for every metric that is a lower-case name string.
+                If this entry is a single dicitonary rather than a list, it will be broadcast to all metrics in the metrics list.
             - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch.
             - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping. Default is 'loss', but 'val_loss' is typically used.
             - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping. Deafults to 'min' for any error. 'max' is for accuracy, etc.
             - `early_stopping_value` (float): Value of the monitor at which point training will stop becasue the critical value has been reached.
+            - `other_callbacks` (list): List of other callbacks to be used in training, if any. Defaults to None.
+            - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
+            
         
         Note that for all such hyperparameters that have a (list of) at the beginning, the entry can be a single item repeated for all hidden layers, or it can be a list of items
         for all hidden layers. If a list is provided, it must have the same length as the depth of the network. 
@@ -139,6 +158,7 @@ class ANN(KerasSmartModel):
         self._dropout = hparams.get("dropout")
         self._width = hparams.get("width")
         self._depth = hparams.get("depth")
+        self._hidden_params = hparams.get("hidden_params")
         if self._depth is None:
             assert isinstance(self._width, (list,tuple)), "If depth is not provided, width must be a list or tuple."
             self._depth = len(self._width)
@@ -153,6 +173,7 @@ class ANN(KerasSmartModel):
         self._hidden_activation = hparams.get("hidden_activation")
         self._hidden_activation_params = hparams.get("hidden_activation_params")
         self._include_output_layer = hparams.get("include_output_layer")
+        self._output_dense_params = hparams.get("output_dense_params")
         self._output_activation = hparams.get("output_activation")
         self._output_activation_params = hparams.get("output_activation_params")
         self._norm_layer_type = hparams.get("norm_layer_type")
@@ -173,6 +194,7 @@ class ANN(KerasSmartModel):
         
         # Generate arrays containing parameters of each Dense Block (Every block contains a linear, normalization, activation, and dropout layer).
         self._dense_width_vec = self._gen_hparam_vec_for_dense(self._width, 'width')
+        self._dense_params_vec = self._gen_hparam_vec_for_dense(self._hidden_params, 'hidden_params')
         self._dense_activation_vec = self._gen_hparam_vec_for_dense(self._hidden_activation, 'hidden_activation')
         self._dense_activation_params_vec = self._gen_hparam_vec_for_dense(self._hidden_activation_params, 'hidden_activation_params')
         self._dense_norm_layer_type_vec = self._gen_hparam_vec_for_dense(self._norm_layer_type, 'norm_layer_type')
@@ -196,7 +218,8 @@ class ANN(KerasSmartModel):
                 'norm_layer_position':self._dense_norm_layer_position_vec[i],
                 'norm_layer_params':self._dense_norm_layer_params_vec[i],
                 'dropout':self._dense_dropout_vec[i],
-                'kernel_regularizer':(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg else None)
+                'kernel_regularizer':self.make_regularizer(),
+                'dense_params':self._dense_params_vec[i],
             }
             if i==0 and self._input_shape is not None:
                 _kwargs.update({'input_shape':self._input_shape})
@@ -205,7 +228,10 @@ class ANN(KerasSmartModel):
         
         # Output layer
         if self._include_output_layer:
-            self.net.add(tf.keras.layers.Dense(self._output_size, kernel_regularizer=(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg else None)))
+            _kwargs = {'units':self._output_size, 'kernel_regularizer':self.make_regularizer()}
+            if self._output_dense_params:
+                _kwargs.update(self._output_dense_params)
+            self.net.add(tf.keras.layers.Dense(**_kwargs))
             if self._output_activation:
                 if isinstance(self._output_activation, str):
                     if self._output_activation.lower() == self._output_activation:
@@ -233,7 +259,7 @@ if __name__ == '__main__':
     
     hparams = {
         # General and I/O parameters
-        "model_name": "My Model",
+        "model_name": "My_Model",
         "input_shape": [28, 28, 3], #[10],
         "output_size": 24,
         # Architecture parameters

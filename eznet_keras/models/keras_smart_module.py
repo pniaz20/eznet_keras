@@ -12,6 +12,7 @@ class KerasSmartModel(tf.keras.models.Model):
     sample_hparams = {
         'model_name': 'KerasSmartModel',
         'l2_reg': 0.0001,
+        'l1_reg': None,
         'batch_size': 16,
         'epochs': 2,
         'validation_data': 0.1,
@@ -21,12 +22,15 @@ class KerasSmartModel(tf.keras.models.Model):
         'loss_function': 'categorical_crossentropy',
         'loss_function_params': None,
         'metrics':['accuracy'],
+        'metrics_params': None,
         'optimizer': 'Adam',
         'optimizer_params': None,
         'checkpoint_path':None,
         'early_stopping_monitor':'loss',
         'early_stopping_mode':'min',
-        'early_stopping_value':1.0e-6
+        'early_stopping_value':1.0e-6,
+        'other_callbacks': None,
+        'custom_schedule': None
     }
     
     def __init__(self, hparams:dict=None):
@@ -44,16 +48,25 @@ class KerasSmartModel(tf.keras.models.Model):
             - `learning_rate` (float): Initial learning rate of training.
             - `exponential_decay_rate` (float): Exponential decay rate for learning rate, if any.
             - `optimizer` (str): Optimizer. Examples are "Adam", "SGD", "RMSprop", "Adagrad", etc. The name of any Keras optimizer can be used.
+                This can also be a custom optimizer class (not instance), in which case `optimizer_params` can be specified for its constructor kwargs.
             - `optimizer_params` (dict): Additional parameters of the optimizer constructor, if any.
             - `epochs` (int): Maximum number of epochs for training.
             - `early_stopping_patience_epochs` (int): Epochs to tolerate unimproved (val) loss, before early stopping (i.e., patience).
-            - `l2_reg` (float): L2 regularization parameter.
-            - `loss_function` (str): Loss function. Examples: "mse", "binary_crossentropy", "categorical_crossentropy", etc. It can also be a Keras loss function instance.
-            - `metrics` (list): list of metrics for Keras compilation. Examples: ['mse'], ['accuracy'], etc. It can also be a Keras metric instance.
+            - `l2_reg` (float): L2 regularization parameter. Defaults to None.
+            - `l1_reg` (float): L1 regularization parameter. Defaults to None.
+            - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy", "categorical_crossentropy", etc.,
+                the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss class (not instance).
+            - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a lower-case name string.
+            - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as "mse" or "accuracy", the name of a 
+                `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class (not instance).
+            - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any. Ignored for every metric that is a lower-case name string.
+                If this entry is a single dicitonary rather than a list, it will be broadcast to all metrics in the metrics list.
             - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch.
             - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping. Default is 'loss', but 'val_loss' is typically used.
             - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping. Deafults to 'min' for any error. 'max' is for accuracy, etc.
             - `early_stopping_value` (float): Value of the monitor at which point training will stop becasue the critical value has been reached.
+            - `other_callbacks` (list): List of other callbacks to be used during training. Defaults to None.
+            - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
 
         ### Returns
 
@@ -78,8 +91,9 @@ class KerasSmartModel(tf.keras.models.Model):
         self.hparams = hparams
         self._batch_size = int(hparams["batch_size"]) if hparams.get("batch_size") else 32
         self._loss_function = hparams.get("loss_function")
-        # self._loss_function_params = hparams.get("loss_function_params")
-        self._metrics_list = hparams.get("metrics")
+        self._loss_function_params = hparams.get("loss_function_params")
+        self._metrics = hparams.get("metrics")
+        self._metrics_params = hparams.get("metrics_params")
         self._optimizer = hparams.get("optimizer")
         self._optimizer_params = hparams.get("optimizer_params")
         self._early_stopping_patience_epochs = hparams.get("early_stopping_patience_epochs")
@@ -87,18 +101,19 @@ class KerasSmartModel(tf.keras.models.Model):
         self._exponential_decay_rate = hparams.get("exponential_decay_rate")
         self._validation_data = hparams.get("validation_data")
         self._epochs = hparams.get("epochs")
-        self._l2_reg = hparams.get("l2_reg") if hparams.get("l2_reg") else 0.0
+        self._l2_reg = hparams.get("l2_reg") if hparams.get("l2_reg") else None
+        self._l1_reg = hparams.get("l1_reg") if hparams.get("l1_reg") else None
         self.history = None
         self.batch_input_shape = (self._batch_size, 1)
         self.batch_output_shape = (self._batch_size, 1)
         self._callbacks = [GarbageCollectionCallback()]
-        self._es = tf.keras.callbacks.EarlyStopping(monitor='val_loss' if 'validation_data' in hparams else 'loss', 
+        self._es = tf.keras.callbacks.EarlyStopping(monitor='val_loss' if hparams.get('validation_data') is not None else 'loss', 
                                                     mode="min", patience=self._early_stopping_patience_epochs) if self._early_stopping_patience_epochs else None
         if self._es:
             self._callbacks.append(self._es)
         self._chkpt = hparams.get("checkpoint_path")
         if self._chkpt:
-            self._chk = tf.keras.callbacks.ModelCheckpoint(self._chkpt, monitor=('val_loss' if 'validation_data' in hparams else 'loss'), 
+            self._chk = tf.keras.callbacks.ModelCheckpoint(self._chkpt, monitor=('val_loss' if hparams.get('validation_data') is not None else 'loss'), 
                                                            verbose=0, save_best_only=True, mode='min')
         else:
             self._chk = None
@@ -112,6 +127,14 @@ class KerasSmartModel(tf.keras.models.Model):
             self._callbacks.append(self._es_crit)
         else:
             self._es_crit = None
+        self._other_callbacks = hparams.get("other_callbacks")
+        if self._other_callbacks is not None:
+            assert isinstance(self._other_callbacks, list), "other_callbacks must be a list of callbacks"
+            self._callbacks.extend(self._other_callbacks)
+        self._custom_schedule = hparams.get("custom_schedule")
+        
+    
+        # Construct an empty Sequential model
         self.net = tf.keras.models.Sequential()
     
     
@@ -139,8 +162,10 @@ class KerasSmartModel(tf.keras.models.Model):
         Args:
             num_samples (int, optional): Number of samples. Defaults to None.
         """
-        compile_keras_model(self.net, self._batch_size, self._learning_rate, self._optimizer, self._loss_function, 
-                              self._metrics_list, self._optimizer_params, self._exponential_decay_rate, num_samples)
+        compile_keras_model(self.net, _batchsize=self._batch_size, _learnrate=self._learning_rate, _optimizer=self._optimizer, 
+                            _loss=self._loss_function, _metrics=self._metrics, _optimizer_params=self._optimizer_params,
+                            _loss_params=self._loss_function_params, _metrics_params=self._metrics_params, 
+                            _exponential_decay_rate=self._exponential_decay_rate, num_samples=num_samples, custom_schedule=self._custom_schedule)
             
     def fit_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, **kwargs):
         """Fit (train) the Keras Smart Model to training data.
@@ -202,19 +227,29 @@ class KerasSmartModel(tf.keras.models.Model):
         """
         plot_keras_model_history(self.history.history, metrics, fig_title, saveto, close_after_finish)
         
-    # def evaluate(self, *args, **kwargs):
-    #     """Evaluate model performance on test data.
+    def evaluate(self, *args, **kwargs):
+        """Evaluate model performance on test data.
 
-    #     Returns:
-    #         The same thing that Keras evaluate returns.
-    #     """
-    #     return self.net.evaluate(*args, **kwargs)
+        Returns:
+            The same thing that Keras evaluate returns.
+        """
+        return self.net.evaluate(*args, **kwargs)
     
-    # def predict(self, *args, **kwargs):
-    #     """Predict the outputs given inputs
+    def predict(self, *args, **kwargs):
+        """Predict the outputs given inputs
 
-    #     Returns:
-    #         Teh same thing that Keras predict returns.
-    #     """
-    #     return self.net.predict(*args, **kwargs)
+        Returns:
+            Teh same thing that Keras predict returns.
+        """
+        return self.net.predict(*args, **kwargs)
+    
+    def make_regularizer(self):
+        if self._l1_reg is not None and self._L1_reg > 0 and (self._l2_reg is None or self._l2_reg == 0): # Only do L1 regularization
+            return tf.keras.regularizers.L1(self._l1_reg)
+        elif self._l2_reg is not None and self._l2_reg > 0 and (self._l1_reg is None or self._l1_reg == 0): # Only do L2 regularization
+            return tf.keras.regularizers.L2(self._l2_reg)
+        elif self._l1_reg is not None and self._l1_reg > 0 and self._l2_reg is not None and self._l2_reg > 0: # Do both L1 and L2 regularization
+            return tf.keras.regularizers.L1L2(self._l1_reg, self._l2_reg)
+        else:
+            return None 
 

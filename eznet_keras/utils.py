@@ -66,24 +66,78 @@ def plot_keras_model_history(history:dict, metrics:list=['loss'], fig_title:str=
             plt.close()
         
 
+
+
 def compile_keras_model(model, _batchsize:int, _learnrate:float, _optimizer:str, _loss:str, _metrics:list, 
-                          _optimizerparams:dict=None, _learnrate_decay_gamma:float=None, num_samples:int=None):
-    if _learnrate_decay_gamma:
+                          _optimizer_params:dict=None, _loss_params:dict=None, _metrics_params:list=None, _exponential_decay_rate:float=None, num_samples:int=None, custom_schedule=None):
+    if custom_schedule:
+        lr = custom_schedule
+    elif _exponential_decay_rate:
         itersPerEpoch = (num_samples//_batchsize) if num_samples else 1
         sch = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=_learnrate, 
-        decay_steps=itersPerEpoch, decay_rate=_learnrate_decay_gamma)
+        decay_steps=itersPerEpoch, decay_rate=_exponential_decay_rate)
         lr = sch
     else:
         lr = _learnrate
-    if _optimizerparams:
-        optparam = _optimizerparams
+    
+    _opt_module = getattr(tf.keras.optimizers, _optimizer) if isinstance(_optimizer, str) else _optimizer
+    
+    if _optimizer_params:
+        optparam = _optimizer_params
         # opt = optdict_keras[_optimizer](learning_rate=lr, **optparam)
-        opt = getattr(tf.keras.optimizers, _optimizer)(learning_rate=lr, **optparam)
+        opt = _opt_module(learning_rate=lr, **optparam)
     else:
         # opt = optdict_keras[_optimizer](learning_rate=lr)
-        opt = getattr(tf.keras.optimizers, _optimizer)(learning_rate=lr)
-    model.compile(optimizer=opt, loss=_loss, metrics=_metrics)
+        opt = _opt_module(learning_rate=lr)
     
+    if isinstance(_loss, str):
+        if _loss.lower()==_loss: # Put it as is
+            _lossfunc = _loss
+        else: # It is the name of a Keras losses class
+            _loss_module = getattr(tf.keras.losses, _loss)
+            if _loss_params:
+                _lossfunc = _loss_module(**_loss_params)
+            else:
+                _lossfunc = _loss_module()
+    else: # It is a custom loss function class
+        if _loss_params:
+            _lossfunc = _loss(**_loss_params)
+        else:
+            _lossfunc = _loss()
+        
+    
+    assert isinstance(_metrics, list), "Metrics must be a list of strings or a list of metrics"
+    if _metrics_params and isinstance(_metrics_params, dict):
+        _metrics_params = [_metrics_params]
+    if _metrics_params:
+        assert len(_metrics_params)==1 or len(_metrics_params)==len(_metrics), \
+            "If metrics_params is specified, it must be a list of length 1 or the same length as metrics."
+    if _metrics_params:
+        _metrics_params_vec = _metrics_params if len(_metrics_params)==len(_metrics) else [_metrics_params[0]]*len(_metrics)
+            
+    _metrics_list = []
+    for i,metric in enumerate(_metrics):
+        if isinstance(metric, str):
+            if metric.lower()==metric: # Put it as is
+                metr = metric
+            else: # It is the name of a Keras metrics class
+                _metr_module = getattr(tf.keras.metrics, metric)
+                if _metrics_params_vec[i] is not None:
+                    metr = _metr_module(**_metrics_params_vec[i])
+                else:
+                    metr = _metr_module()
+        else: # It is a custom metric class
+            if _metrics_params_vec[i] is not None:
+                metr = metric(**_metrics_params_vec[i])
+            else:
+                metr = metric()
+        _metrics_list.append(metr)
+    
+    
+    model.compile(optimizer=opt, loss=_lossfunc, metrics=_metrics_list)
+    
+
+
 
 def fit_keras_model(model, x_train, y_train, x_val=None, y_val=None, 
     _batchsize:int=None, _epochs:int=1, _callbacks:list=None, verbose:int=1, **kwargs):

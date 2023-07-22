@@ -10,17 +10,19 @@ else:
 
 
 class Dense_Block(tf.keras.layers.Layer):
-    def __init__(self, input_shape:list=None, output_size:int=None, activation:str=None, activation_params:dict=None, norm_layer_type:str=None, norm_layer_position:str='before', 
+    def __init__(self, input_shape:list=None, output_size:int=None, activation:str=None, activation_params:dict=None, dense_params:dict=None, norm_layer_type:str=None, norm_layer_position:str='before', 
                  norm_layer_params:dict=None, dropout:float=None, kernel_regularizer:tf.keras.regularizers.Regularizer=None):
         """Dense (fully connected) block containing one linear layer, followed optionally by a normalization layer, an activation function and a Dropout layer.
 
         ### Args:
+
             - `input_shape` (list|tuple): Shape of the input without the batch size.
             - `output_size` (int, optional): Number of output features. Defaults to None, in which case it will be input_size.
             - `activation` (str, optional): Activation. It can be an activation function name ("relu","sigmoid","tanh", etc.), an activation layer name ("ReLU", "LeakyReLU",
                 "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
             - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None. Ignored if `activation` is a lower-case function name.
                 By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
+            - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None. This will overwrite any other parameters such as regularizers, etc.
             - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization', 'LayerNormalization', etc.
                 It can also be a Keras Layer class (not instance).
             - `norm_layer_position` (str, optional): Position of norm layer relative to activation. Defaults to 'before'. Alternative is 'after'.
@@ -53,6 +55,7 @@ class Dense_Block(tf.keras.layers.Layer):
         self._norm_layer_type = norm_layer_type
         self._norm_layer_position = norm_layer_position
         self._norm_layer_params = norm_layer_params
+        self._dense_params = dense_params
         self._dropout = dropout
         if activation is not None:
             if isinstance(activation, str):
@@ -74,10 +77,16 @@ class Dense_Block(tf.keras.layers.Layer):
         self._dropout_module = tf.keras.layers.Dropout if dropout else None
         self._kernel_regularizer = kernel_regularizer
         self.net = tf.keras.models.Sequential()
+        _kwargs = {
+            'units': output_size
+        }
         if input_shape:
-            self.net.add(tf.keras.layers.Dense(output_size, input_shape=input_shape, kernel_regularizer=kernel_regularizer))
-        else:
-            self.net.add(tf.keras.layers.Dense(output_size, kernel_regularizer=kernel_regularizer))
+            _kwargs.update({'input_shape':input_shape})
+        if kernel_regularizer is not None:
+            _kwargs.update({'kernel_regularizer':kernel_regularizer})
+        if dense_params is not None:
+            _kwargs.update(dense_params)
+        self.net.add(tf.keras.layers.Dense(**_kwargs))
         if norm_layer_type and norm_layer_position=='before': 
             if norm_layer_params: self.net.add(self._norm_layer_module(**norm_layer_params))
             else: self.net.add(self._norm_layer_module())
@@ -106,7 +115,8 @@ class Dense_Block(tf.keras.layers.Layer):
             'norm_layer_position':self._norm_layer_position,
             'norm_layer_params':self._norm_layer_params,
             'dropout':self._dropout,
-            'kernel_regularizer':self._kernel_regularizer
+            'kernel_regularizer':self._kernel_regularizer,
+            'dense_params':self._dense_params
         }
         config['hparams'] = hparams
         return config
@@ -121,7 +131,7 @@ class Dense_Block(tf.keras.layers.Layer):
 
 
 
-def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_shape:list=None, activation:str=None, activation_params:dict=None, 
+def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_shape:list=None, activation:str=None, activation_params:dict=None, dense_params:dict=None,
                     norm_layer_type:str=None, norm_layer_position:str='before', norm_layer_params:dict=None, dropout:float=None, 
                     kernel_regularizer:tf.keras.regularizers.Regularizer=None):
     """Add a Dense (fully connected) block containing one linear layer, followed optionally by a normalization layer, an activation function and a Dropout layer, 
@@ -134,6 +144,7 @@ def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_sha
                 "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
             - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None. Ignored if `activation` is a lower-case function name.
                 By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
+            - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None. This will overwrite any other parameters such as regularizers, etc.
             - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization', 'LayerNormalization', etc.
                 It can also be a Keras Layer class (not instance).
             - `norm_layer_position` (str, optional): Position of norm layer relative to activation. Defaults to 'before'. Alternative is 'after'.
@@ -166,10 +177,17 @@ def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_sha
     else:
         _norm_layer_module = None
     
-    if input_shape:
-        model.add(tf.keras.layers.Dense(output_size, input_shape=input_shape, kernel_regularizer=kernel_regularizer))
-    else:
-        model.add(tf.keras.layers.Dense(output_size, kernel_regularizer=kernel_regularizer))
+    
+    _kwargs = {
+        'units': output_size
+    }
+    if input_shape is not None:
+        _kwargs.update({'input_shape':input_shape})
+    if kernel_regularizer is not None:
+        _kwargs.update({'kernel_regularizer':kernel_regularizer})
+    if dense_params is not None:
+        _kwargs.update(dense_params)
+    model.add(tf.keras.layers.Dense(**_kwargs))
         
     if norm_layer_type and norm_layer_position=='before': 
         if norm_layer_params: model.add(_norm_layer_module(**norm_layer_params))

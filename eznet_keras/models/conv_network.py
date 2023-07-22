@@ -43,6 +43,7 @@ class Conv_Network(KerasSmartModel):
         "include_dense_layers": True,
         "dense_width": "auto",
         "dense_depth": 2,
+        "dense_params": None,
         "dense_activation": "relu",
         "dense_activation_params": None,
         "dense_norm_layer_type": "BatchNormalization",
@@ -50,10 +51,12 @@ class Conv_Network(KerasSmartModel):
         "dense_norm_layer_params": None,
         "dense_dropout": 0.1,
         "include_output_layer": True,
+        "output_dense_params": None,
         "output_activation": "softmax",
         "output_activation_params": None,
         # Training procedure
         "l2_reg": 0.0001,
+        "l1_reg": None,
         "batch_size": 32,
         "epochs": 2,
         "validation_data": [0.05,'testset'],
@@ -61,13 +64,17 @@ class Conv_Network(KerasSmartModel):
         "learning_rate": 0.01,
         "exponential_decay_rate": 0.9,
         "loss_function": "categorical_crossentropy",
+        "loss_function_params": None,
         "optimizer": "Adam",
         "optimizer_params": None,
         'metrics':['accuracy'],
+        'metrics_params':None,
         'checkpoint_path':None,
         'early_stopping_monitor':'loss',
         'early_stopping_mode':'min',
-        'early_stopping_value':1.0e-6
+        'early_stopping_value':1.0e-6,
+        'other_callbacks': None,
+        'custom_schedule': None,
     }
     
     
@@ -155,6 +162,7 @@ class Conv_Network(KerasSmartModel):
         - `dense_width` ("auto"|int|list): Width of the hidden layers of the Dense network. "auto", a number (for all of them) or a list holding width of each hidden layer.
             If "auto", it will start with the output size of the Flatten() layer, halving at every Dense block.
         - `dense_depth` (int): Depth (number of hidden layers) of the Dense network. `0` will mean no hidden layers, meaning Flatten will be directly followed by the output layer.
+        - `dense_params` (dict): (list of) kwargs dict to pass to the dense layer constructor in each block. Defaults to None.
         - `dense_activation` (str|list): (list of) activation function for hidden layers of the Dense network. These can be activation functions ("relu", "sigmoid", "tanh", etc.),
             activation layers ("ReLU", "LeakyReLU", "Softmax", etc.), or custom Layer classes (not instances). Defaults to None, in which case no activation function will be used.
         - `dense_activation_params` (dict|list): (list of) dicts for the dense activation functions' constructors. Ignored if lower-case activation functions are provided.
@@ -166,6 +174,7 @@ class Conv_Network(KerasSmartModel):
         - `dense_norm_layer_params` (dict|list): (list of) kwargs dict for the dense normalization layers' constructors.
         - `dense_dropout` (float|list): (list of) Dropout rates (if any) for the hidden layers of the Dense network.
         - `include_output_layer` (bool): Whether to include an output layer. Defaults to True.
+        - `output_dense_params` (dict): kwargs dict for the output layer's Dense constructor. Defaults to None.
         - `output_activation` (str): Activation (with the same format as dense activation) for the output layer, if any.
             **NOTE** Depending on the loss function, you may not need an activation function.
             For classification problems, you may want to choose "sigmoid" or "softmax".
@@ -178,21 +187,30 @@ class Conv_Network(KerasSmartModel):
         - `batch_size` (int): Minibatch size, the expected input size of the network.
         - `learning_rate` (float): Initial learning rate of training.
         - `exponential_decay_rate` (float): Exponential decay rate gamma for learning rate, if any.
-        - `optimizer` (str): Optimizer. Examples: 'Adam', 'SGD', 'RMSprop', etc. It can be the name of any Keras optimizer.
+        - `optimizer` (str): Optimizer. Examples: 'Adam', 'SGD', 'RMSprop', etc. It can be the name of any Keras optimizer class.
+            This can also be a custom optimizer class (not instance), in which case `optimizer_params` can be specified for its constructor kwargs.
         - `optimizer_params` (dict): Additional parameters of the optimizer constructor, if any.
         - `epochs` (int): Maximum number of epochs for training.
         - `early_stopping_patience_epochs` (int): Epochs to tolerate unimproved (val) loss, before early stopping.
         - `l2_reg` (float): L2 regularization parameter.
-        - `loss_function` (str): Loss function. Examples: 'mse','categorical_crossentropy', etc. A Keras loss function instance can also be provided rather than a string.
+        - `l1_reg` (float): L1 regularization parameter.
+        - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy", "categorical_crossentropy", etc.,
+            the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss class (not instance).
+        - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a lower-case name string.
+        - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as "mse" or "accuracy", the name of a 
+            `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class (not instance).
+        - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any. Ignored for every metric that is a lower-case name string.
+            If this entry is a single dicitonary rather than a list, it will be broadcast to all metrics in the metrics list.
         - `validation_data` (tuple): Validation data, if any. It should be a tuple of `(portion, from_dataset)`. For instance, `[0.05, 'testset']` means 5% of the testset will be 
             used for validation. The second element of the tuple can only be `'trainset'` and `'testset'`. The first element must be a float between 0 and 1. 
             If the second element is not specified, testset will be used by default.
-        - `metrics` (list): list of metrics for Keras compilation, e.g. ['accuracy']. This will be passed directly to Keras compile function, so it can be a list of class instances
-            or a list of strings.
         - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch.
         - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping. Default is 'loss', but 'val_loss' is typically used.
         - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping. Deafults to 'min' for any error. 'max' is for accuracy, etc.
         - `early_stopping_value` (float): Value of the monitor at which point training will stop because the critical value has been reached.
+        - `other_callbacks` (list): List of other callbacks to be used during training, if any. Defaults to None.
+        - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
+        
         
         ### Returns
         
@@ -292,7 +310,7 @@ class Conv_Network(KerasSmartModel):
                 'dropout':self._conv_dropout_vec[i],
                 'spatial_dropout':self._conv_spatial_dropout_vec[i], 
                 'min_image_dim':self._min_image_size,
-                'kernel_regularizer':(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg>0 else None)
+                'kernel_regularizer':self.make_regularizer()
             }
             if i==0:
                 _kwargs.update({'input_shape':self._input_shape})
@@ -323,6 +341,7 @@ class Conv_Network(KerasSmartModel):
             
             # Dense layers hyperparameters
             self._dense_width = hparams.get("dense_width")
+            self._dense_params = hparams.get("dense_params")
             self._dense_activation = hparams.get("dense_activation")
             self._dense_activation_params = hparams.get("dense_activation_params")
             self._dense_norm_layer_type = hparams.get("dense_norm_layer_type")
@@ -333,6 +352,7 @@ class Conv_Network(KerasSmartModel):
             # Generate lists of hyperparameters for the dense layers
             self._dense_width_vec = self._gen_hparam_vec_for_dense(self._dense_width, 'dense_width',
                 check_auto=True, init_for_auto=self._dense_input_size, powers_of_two_if_auto=True, direction_if_auto="down")
+            self._dense_params_vec = self._gen_hparam_vec_for_dense(self._dense_params, 'dense_params')
             self._dense_activation_vec = self._gen_hparam_vec_for_dense(self._dense_activation, 'dense_activation')
             self._dense_activation_params_vec = self._gen_hparam_vec_for_dense(self._dense_activation_params, 'dense_activation_params')
             self._dense_norm_layer_type_vec = self._gen_hparam_vec_for_dense(self._dense_norm_layer_type, 'dense_norm_layer_type')
@@ -354,7 +374,8 @@ class Conv_Network(KerasSmartModel):
                         'norm_layer_position':self._dense_norm_layer_position_vec[i],
                         'norm_layer_params':self._dense_norm_layer_params_vec[i],
                         'dropout': self._dense_dropout_vec[i],
-                        'kernel_regularizer':(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg>0 else None)
+                        'kernel_regularizer':self.make_regularizer(),
+                        'dense_params':self._dense_params_vec[i]
                     }
                     add_dense_block(**_kwargs)
                     # in_size = out_size
@@ -363,11 +384,15 @@ class Conv_Network(KerasSmartModel):
         # Construct output layer
         if self._include_output_layer:
             # Output hyperparameters
+            self._output_dense_params = hparams.get("output_dense_params")
             self._output_activation = hparams.get("output_activation")
             self._output_activation_params = hparams.get("output_activation_params")
         
             # Output layer
-            self.net.add(tf.keras.layers.Dense(self._output_shape[-1], kernel_regularizer=(tf.keras.regularizers.L2(self._l2_reg) if self._l2_reg>0 else None)))
+            _kwargs = {'units':self._output_shape[-1], 'kernel_regularizer':self.make_regularizer()}
+            if self._output_dense_params:
+                _kwargs.update(self._output_dense_params)
+            self.net.add(tf.keras.layers.Dense(**_kwargs))
             if self._output_activation:
                 if isinstance(self._output_activation, str):
                     if self._output_activation.lower() == self._output_activation:
