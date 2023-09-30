@@ -207,8 +207,8 @@ def test_keras_model_class(model_class, hparams:dict=None, save_and_export:bool=
     print("Done.")
     
 
-
 # Perform garbage collection
+import gc
 class GarbageCollectionCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         gc.collect()
@@ -255,19 +255,13 @@ def autoname(name):
 
 def calc_image_size(size_in:int, kernel_size:int, padding:int, stride:int, dilation:int):
     """Calculate image size after convolution or pooling.
-    
-    **NOTE** grouping is not supported yet.
-
     ### Args:
-    
         - `size_in` (int|list): (list of) image input dimension(s).
         - `kernel_size` (int|list): (list of) kernel (or pool) size
         - `padding` (int|list): (list of) padding sizes, or string such as 'valid' and 'same'.
         - `stride` (int|list): (list of) strides.
         - `dilation` (int|list): (list of) dilation rates.
-
     ### Returns:
-    
         int or list: Output image dimensions
     """
     if padding == 'same':
@@ -280,7 +274,8 @@ def calc_image_size(size_in:int, kernel_size:int, padding:int, stride:int, dilat
             if isinstance(kernel_size, int): kernel_size = [kernel_size]*len(size_in)
             if isinstance(stride, int): stride = [stride]*len(size_in)
             if isinstance(dilation, int): dilation = [dilation]*len(size_in)
-            return [math.floor((size_in[i] + 2*padding[i] - dilation[i]*(kernel_size[i]-1) - 1)/stride[i] + 1) for i in range(len(size_in))]
+            return [math.floor((size_in[i] + 2*padding[i] - dilation[i]*(kernel_size[i]-1) - 1)/stride[i] + 1) for \
+                i in range(len(size_in))]
         else:
             assert isinstance(size_in, int), "size_in must be an integer or a list/tuple of integers."
             assert isinstance(padding, int), "padding must be an integer or a list/tuple of integers."
