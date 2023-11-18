@@ -244,7 +244,7 @@ class KerasSmartModel(tf.keras.models.Model):
         return self.net.predict(*args, **kwargs)
     
     def make_regularizer(self):
-        if self._l1_reg is not None and self._L1_reg > 0 and (self._l2_reg is None or self._l2_reg == 0): # Only do L1 regularization
+        if self._l1_reg is not None and self._l1_reg > 0 and (self._l2_reg is None or self._l2_reg == 0): # Only do L1 regularization
             return tf.keras.regularizers.L1(self._l1_reg)
         elif self._l2_reg is not None and self._l2_reg > 0 and (self._l1_reg is None or self._l1_reg == 0): # Only do L2 regularization
             return tf.keras.regularizers.L2(self._l2_reg)
