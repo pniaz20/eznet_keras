@@ -76,12 +76,12 @@ class Recurrent_Network(KerasSmartModel):
     def __init__(self, hparams:dict=None):
         """Sequence to Dense network with RNN for time-series classification, regression, and forecasting, as well as NLP applications.
         This network uses any RNN layers as encoders to extract information from input sequences, and (optionally) fully-connected 
-        multilayer perceptrons (Dense) to decode the sequence into an output, which can be class probabilitites 
-        (timeseries classification), a continuous number (regression), or an unfolded sequence (forecasting) of a 
-        target timeseries. Multiple stacked RNN layers are supported, as well as bidirectional RNNs. Furthermore, the dense blocks in the decoder part are by default assumed to
-        contain a dense layer, followed (optionally) by a normalization, activation, and dropout layer. Multiple activation functions, loss functions, optimizers, etc. are
-        supported, meaning this class can be used to construct virtually any serial RNN network possible, with or without dense layers, with or without output layers.
-        In this class, parallelization or skip connections are not yet supported.
+        multilayer perceptrons (Dense) to decode the sequence into an output, which can be class probabilitites (timeseries classification),
+        a continuous number (regression), or an unfolded sequence (forecasting) of a target timeseries. Multiple stacked RNN layers are supported,
+        as well as bidirectional RNNs. Furthermore, the dense blocks in the decoder part are by default assumed to contain a dense layer, followed
+        (optionally) by a normalization, activation, and dropout layer. Multiple activation functions, loss functions, optimizers, etc. are
+        supported, meaning this class can be used to construct virtually any serial RNN network possible, with or without dense layers, with or
+        without output layers. In this class, parallelization or skip connections are not yet supported.
         The RNN section supports input dropout, recurrent dropout, and layer dropout (dropout between two stacked layers of RNN, for example).
 
         ### Usage
@@ -89,16 +89,18 @@ class Recurrent_Network(KerasSmartModel):
         `net = Recurrent_Network(hparams)` where `hparams` is dictionary of hyperparameters containing the keys described below.
         
         - Inspect the `sample_hparams` class attribute for a template of the hyperparameters dictionary.
-        - Many keys, especially those that have "(list of)" in their description, can be either scalar items or lists of items. If they are scalar, they will be broadcasted to all 
-          RNN/Dense blocks. If they are lists, they must have the same length as the number (depth) of RNN/Dense blocks, i.e. `rnn_depth`/`dense_depth` hyperparameters.
-        - The Training Procedure section of the hyperparameters are optional, and will only be used by the parent class `KerasSmartModel` if the model is trained using its methods.
-          Otherwise, it is not necessary at all for building a network.
-        - Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer, and do not accept any kwargs. Activation layers
-          come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be wrapped in an `Activation` layer. Activation functions all have lower-case
-          names, but activation layers are classes and have every-word-capitalized names. We will use this as a clue to recognize what the user wants, and perform accordingly.
-          Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and `tf.keras.layers.ReLU` layer). 
-          However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`), and some are only available as layers 
-          (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
+        - Many keys, especially those that have "(list of)" in their description, can be either scalar items or lists of items.
+          If they are scalar, they will be broadcasted to all RNN/Dense blocks. If they are lists, they must have the same length as the number
+          (depth) of RNN/Dense blocks, i.e. `rnn_depth`/`dense_depth` hyperparameters.
+        - The Training Procedure section of the hyperparameters are optional, and will only be used by the parent class `KerasSmartModel`
+          if the model is trained using its methods. Otherwise, it is not necessary at all for building a network.
+        - Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer,
+          and do not accept any kwargs. Activation layers come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be
+          wrapped in an `Activation` layer. Activation functions all have lower-case names, but activation layers are classes and have
+          every-word-capitalized names. We will use this as a clue to recognize what the user wants, and perform accordingly.
+          Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and `tf.keras.layers.ReLU`
+          layer). However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`), and some are only available as
+          layers (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
         
         The keys of the hyperparameter dictionary are as follows:
         
@@ -106,46 +108,53 @@ class Recurrent_Network(KerasSmartModel):
         
             - `model_name` (str): Name of the model, can be used later for saving, etc.
             - `in_features` (int): Number of features of the input.
-            - `out_features` (int): Number of features of the output, assuming there is an output layer (including a dense layer and an activation function)
+            - `out_features` (int): Number of features of the output, assuming there is an output layer
+                (including a dense layer and an activation function)
             - `sequence_length` (int): Length of the sequence.
             - `final_rnn_return_sequences` (bool): Whether the final RNN returns a whole sequence rather than its last time step. Defaults to False.
-                This is useful if a sequence-to-sequence architecture is intended, or all information of all time steps of the final RNN layer is desired.
-            - `flatten_after_rnn` (bool): If `final_rnn_return_sequences` is True, whether to flatten the final RNN output sequence into a single feature vector.
-                This way, all information of all time steps of the final RNN layer will be preserved, and the 3D output of the final RNN layer will be flattened to a 2D tensor.
-                If `final_rnn_return_sequences` is False, this parameter is ignored. Defaults to False.
-            - `permute_output` (bool): If `'final_rnn_return_sequences' = True` and `'flatten_after_rnn' = False`, whether to permute the output sequence to be 
-                `(batch, features, sequence_length)`. Default is False.
+                This is useful if a sequence-to-sequence architecture is intended, or all information of all time steps of the final RNN layer is
+                desired.
+            - `flatten_after_rnn` (bool): If `final_rnn_return_sequences` is True, whether to flatten the final RNN output sequence into a single
+                feature vector. This way, all information of all time steps of the final RNN layer will be preserved, and the 3D output of the final
+                RNN layer will be flattened to a 2D tensor. If `final_rnn_return_sequences` is False, this parameter is ignored. Defaults to False.
+            - `permute_output` (bool): If `'final_rnn_return_sequences' = True` and `'flatten_after_rnn' = False`, whether to permute the output
+                sequence to be `(batch, features, sequence_length)`. Default is False.
             
             
         #### RNN architecture hyperparameters
         
-            - `rnn_type` (str|list): (list of) RNN types, options are "LSTM", "GRU", "SimpleRNN", etc. They should be class names or custom RNN layer classes (not instances).
+            - `rnn_type` (str|list): (list of) RNN types, options are "LSTM", "GRU", "SimpleRNN", etc.
+                They should be class names or custom RNN layer classes (not instances).
             - `rnn_hidden_size` (int|list): (list of) RNN layer hidden sizes. Default is 16.
             - `rnn_bidirectional` (bool): Whether the RNN layers are bidirectional or not. Default is False.
             - `rnn_depth` (int): Number of stacked RNN layers. Default is 1.
             - `rnn_input_dropout` (float|list): (list of) Dropout rates, if any, of the RNN layer inputs. 
                 Please note that using dropout in RNN layers is generally discouraged, for it decreases determinism during inference.
             - `rnn_recurrent_dropout` (float|list): (list of) Dropout rates, if any, of the RNN layer recurrent states.
-            - `rnn_layer_dropout` (float|list): (list of) Dropout rates, if any, of the RNN layer outputs. This will be applied to all time steps equally.
-            - `rnn_params` (dict): A single dictionary of kwargs for the RNN layers' constructors. Default is None.
-              If specified, the keys in this dictionary will not only add to, but also overwrite any existing arguments this class passes to the RNN layer constructor.
+            - `rnn_layer_dropout` (float|list): (list of) Dropout rates, if any, of the RNN layer outputs.
+                This will be applied to all time steps equally.
+            - `rnn_params` (dict): A single dictionary of kwargs for the RNN layers' constructors. Default is None. If specified, the keys in this
+            dictionary will not only add to, but also overwrite any existing arguments this class passes to the RNN layer constructor.
             
             
         #### Dense network architecture hyperparameters
         
             - `include_dense_layers` (bool): Whether to include a Dense network after the RNN layers. Default is True.
-            - `dense_width` (int|list): (list of) Widths of the Dense network. It can be a number (for all) or a list holding width of each hidden layer.
+            - `dense_width` (int|list): (list of) Widths of the Dense network. It can be a number (for all) or a list holding width of each hidden
+                layer.
             - `dense_depth` (int): Depth (number of hidden layers) of the Dense network, not including the output layer.
             - `dense_params` (dict): (list of) dictionaries of kwargs for the Dense layers' constructors. Default is None.
             - `dense_activation` (str|list): (list of) Activation functions for hidden layers of the Dense network.
-                It can be activation function ("relu", "sigmoid", "softmax", etc.), activation layer ("ReLU", "LeakyReLU", "Softmax", etc.), or a custom Keras layer class 
-                (not instance)
-            - `dense_activation_params` (dict|list): (list of) Dictionaries of parameters for the activation function constructors of the Dense network.
-                Ignored if the activation function is a lower-case function name. By the way, for `LeakyReLU`, the left-hand slope is specified by the `alpha` key.
+                It can be activation function ("relu", "sigmoid", "softmax", etc.), activation layer
+                ("ReLU", "LeakyReLU", "Softmax", etc.), or a custom Keras layer class (not instance).
+            - `dense_activation_params` (dict|list): (list of) Dictionaries of parameters for the activation function constructors of the Dense
+                network. Ignored if the activation function is a lower-case function name. By the way, for `LeakyReLU`, the left-hand slope is 
+                specified by the `alpha` key.
             - `norm_layer_type` (str|list): (list of) Types of normalization layers to use in the dense section, if any. 
                 Options are "BatchNormalization", "LayerNormalization", etc. It can be a layer name or a Keras Layer class (not instance).
             - `norm_layer_params` (dict|list): (list of) Dictionaries of parameters for the normalization layer constructors.
-            - `norm_layer_position` (str|list): (list of) Whether the normalization layer should come 'before' or 'after' the activation of each hidden layer in the dense network.
+            - `norm_layer_position` (str|list): (list of) Whether the normalization layer should come 'before' or 'after' the activation of each
+                hidden layer in the dense network.
             - `dense_dropout` (float|list): (list of) Dropout rates (if any) for the hidden layers of the Dense network.
 
         #### Output layer hyperparameters
@@ -156,7 +165,8 @@ class Recurrent_Network(KerasSmartModel):
             - `output_activation` (str): Activation function for the output layer of the Dense network, if any.
                 Like the `dense_activation` key, it can be activation function name, layer name, or a custom Keras Layer class (not instance).
                 **NOTE** If the `loss_function` is `sparse_categorical_crossentropy`, then no output activation is erquired.
-                However, if it is `categorical_crossentropy` (a.k.a. negative log-likelihood), then you must specify an output activation as in "softmax".
+                However, if it is `categorical_crossentropy` (a.k.a. negative log-likelihood), then you must specify an output activation as in
+                "softmax".
             - `output_activation_params` (dict): Dictionary of parameters for the activation function constructor of the output layer.
             
         #### Training procedure hyperparameters
@@ -165,26 +175,36 @@ class Recurrent_Network(KerasSmartModel):
             - `learning_rate` (float): Initial learning rate of training. Defaults to 0.001. Will be given directly to the optimization function.
             - `exponential_decay_rate` (float): Exponential decay rate for learning rate, if any.
             - `optimizer` (str): Optimizer. Examples: 'Adam', 'SGD', 'RMSProp', etc. It can be the name of any Keras optimizer class.
-                This can also be a custom optimizer class (not instance), in which case `optimizer_params` can be specified for its constructor kwargs.
+                This can also be a custom optimizer class (not instance), in which case `optimizer_params` can be specified for its constructor
+                kwargs.
             - `optimizer_params` (dict): Additional parameters of the optimizer constructor, if any. Defaults to None.
             - `epochs` (int): Maximum number of epochs for training. Defaults to 2.
             - `early_stopping_patience_epochs` (int): Epochs to tolerate unimproved (val) loss, before early stopping. Defaults to None.
-            - `validation_data` (list): Portion of validation data. Should be a tuple like [validation split, dataset as in 'trainset' or 'testset']. Defaults to None.
+            - `validation_data` (list): Portion of validation data. Should be a tuple like [validation split, dataset as in 'trainset' or
+                'testset']. Defaults to None.
             - `l2_reg` (float): L2 regularization parameter. Defaults to None.
             - `l1_reg` (float): L1 regularization parameter. Defaults to None.
-            - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy", "categorical_crossentropy", etc.,
-                the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss class (not instance).
-            - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a lower-case name string.
-            - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as "mse" or "accuracy", the name of a 
-                `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class (not instance).
-            - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any. Ignored for every metric that is a lower-case name string.
+            - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy",
+                "categorical_crossentropy", etc., the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, 
+                `MeanSquaredError`, etc., or a valid loss class (not instance).
+            - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any.
+                Ignored if the loss function is a lower-case name string.
+            - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as
+                "mse" or "accuracy", the name of a `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc.,
+                or a valid metric class (not instance).
+            - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any.
+                Ignored for every metric that is a lower-case name string.
                 If this entry is a single dicitonary rather than a list, it will be broadcast to all metrics in the metrics list.
-            - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch. The path does not need to exist beforehand.
-            - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping. Default is 'loss', but 'val_loss' is typically used.
-            - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping. Deafults to 'min' for any error. 'max' is for accuracy, etc.
+            - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch.
+                The path does not need to exist beforehand.
+            - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping.
+                Default is 'loss', but 'val_loss' is typically used.
+            - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping.
+                Defaults to 'min' for any error. 'max' is for accuracy, etc.
             - `early_stopping_value` (float): Value of the monitor at which point training will stop becasue the critical value has been reached.
             - `other_callbacks` (list): List of other callbacks to be used during training. Defaults to None.
-            - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
+            - `custom_schedule` (schedule): Custom learning rate schedule inheriting from
+                `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
 
         ### Returns
         

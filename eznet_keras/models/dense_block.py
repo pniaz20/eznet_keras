@@ -18,13 +18,14 @@ class Dense_Block(tf.keras.layers.Layer):
 
             - `input_shape` (list|tuple): Shape of the input without the batch size.
             - `output_size` (int, optional): Number of output features. Defaults to None, in which case it will be input_size.
-            - `activation` (str, optional): Activation. It can be an activation function name ("relu","sigmoid","tanh", etc.), an activation layer name ("ReLU", "LeakyReLU",
-                "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
-            - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None. Ignored if `activation` is a lower-case function name.
-                By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
-            - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None. This will overwrite any other parameters such as regularizers, etc.
-            - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization', 'LayerNormalization', etc.
-                It can also be a Keras Layer class (not instance).
+            - `activation` (str, optional): Activation. It can be an activation function name ("relu","sigmoid","tanh", etc.),
+                an activation layer name ("ReLU", "LeakyReLU", "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
+            - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None.
+                Ignored if `activation` is a lower-case function name. By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
+            - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None.
+                This will overwrite any other parameters such as regularizers, etc.
+            - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization',
+                'LayerNormalization', etc. It can also be a Keras Layer class (not instance).
             - `norm_layer_position` (str, optional): Position of norm layer relative to activation. Defaults to 'before'. Alternative is 'after'.
             - `norm_layer_params` (dict, optional): kwargs to pass to the norm layer constructor. Defaults to None.
             - `dropout` (float, optional): Dropout rate at the end. Defaults to None. Must be a float between 0 and 1.
@@ -32,14 +33,16 @@ class Dense_Block(tf.keras.layers.Layer):
         
         
         **NOTE**: 
-        Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer, and do not accept any kwargs. Activation layers
-        come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be wrapped in an `Activation` layer. Activation functions all have lower-case
-        names, but activation layers are classes and have every-word-capitalized names. We will use this as a clue to recognize what the user wants, and perform accordingly.
-        Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and `tf.keras.layers.ReLU` layer). 
-        However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`), and some are only available as layers 
-        (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
+        Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer, and do not accept any
+        kwargs. Activation layers come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be wrapped in an
+        `Activation` layer. Activation functions all have lower-case names, but activation layers are classes and have every-word-capitalized names.
+        We will use this as a clue to recognize what the user wants, and perform accordingly.
+        Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and
+        `tf.keras.layers.ReLU` layer). However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`),
+        and some are only available as layers (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
             
         ### Returns:
+        
         A `tf.keras.layers.Layer` object.
         """
         super(Dense_Block, self).__init__()
@@ -131,30 +134,37 @@ class Dense_Block(tf.keras.layers.Layer):
 
 
 
-def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_shape:list=None, activation:str=None, activation_params:dict=None, dense_params:dict=None,
+def add_dense_block(model:tf.keras.models.Sequential, output_size:int, input_shape:list=None,
+                    activation:str=None, activation_params:dict=None, dense_params:dict=None,
                     norm_layer_type:str=None, norm_layer_position:str='before', norm_layer_params:dict=None, dropout:float=None, 
                     kernel_regularizer:tf.keras.regularizers.Regularizer=None):
-    """Add a Dense (fully connected) block containing one linear layer, followed optionally by a normalization layer, an activation function and a Dropout layer, 
+    """
+    Add a Dense (fully connected) block containing one linear layer, followed optionally by a normalization layer, an activation function and a Dropout layer, 
     to a `tf.keras.models.Sequential` instance.
 
-        ### Args:
-            - `input_shape` (list|tuple, optional): Shape of the input disregarding the batch size.
-            - `output_size` (int, optional): Number of output features. Defaults to None, in which case it will be input_size.
-            - `activation` (str, optional): Activation. It can be an activation function name ("relu","sigmoid","tanh", etc.), an activation layer name ("ReLU", "LeakyReLU",
-                "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
-            - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None. Ignored if `activation` is a lower-case function name.
-                By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
-            - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None. This will overwrite any other parameters such as regularizers, etc.
-            - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization', 'LayerNormalization', etc.
-                It can also be a Keras Layer class (not instance).
-            - `norm_layer_position` (str, optional): Position of norm layer relative to activation. Defaults to 'before'. Alternative is 'after'.
-            - `norm_layer_params` (dict, optional): kwargs to pass to the norm layer constructor. Defaults to None.
-            - `dropout` (float, optional): Dropout rate at the end. Defaults to None. Must be a float between 0 and 1.
-            - `kernel_regularizer` (regularizer, optinal): Regularizer to be used for the kernel weights in the layers.
+    ### Args:
+        
+        - `input_shape` (list|tuple, optional): Shape of the input disregarding the batch size.
+        - `output_size` (int, optional): Number of output features. Defaults to None, in which case it will be input_size.
+        - `activation` (str, optional): Activation. It can be an activation function name ("relu","sigmoid","tanh", etc.),
+            an activation layer name ("ReLU", "LeakyReLU",
+            "Softmax", etc.), or a custom Keras Layer class (not instance). Defaults to None.
+        - `activation_params` (dict, optional): kwargs to pass to the activation function constructor. Defaults to None.
+            Ignored if `activation` is a lower-case function name. By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
+        - `dense_params` (dict, optional): kwargs to pass to the dense layer constructor. Defaults to None.
+            This will overwrite any other parameters such as regularizers, etc.
+        - `norm_layer_type` (str, optional): Type of normalization layer. Defaults to None. Examples: 'BatchNormalization',
+            'LayerNormalization', etc. It can also be a Keras Layer class (not instance).
+        - `norm_layer_position` (str, optional): Position of norm layer relative to activation. Defaults to 'before'. Alternative is 'after'.
+        - `norm_layer_params` (dict, optional): kwargs to pass to the norm layer constructor. Defaults to None.
+        - `dropout` (float, optional): Dropout rate at the end. Defaults to None. Must be a float between 0 and 1.
+        - `kernel_regularizer` (regularizer, optinal): Regularizer to be used for the kernel weights in the layers.
             
-        ### Returns:
+    ### Returns:
+        
         Nothing. It modifies the `model` argument passed to it.
-        """
+        
+    """
     
     _dropout_module = tf.keras.layers.Dropout if dropout else None
     

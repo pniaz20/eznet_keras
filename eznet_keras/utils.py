@@ -7,6 +7,8 @@ if __name__ == "eznet_keras.utils":
     from .keras2cpp import export_model
 else:
     from keras2cpp import export_model
+import os
+import warnings
 from pathlib import Path
 import math
 import json
@@ -157,17 +159,23 @@ def fit_keras_model(model, x_train, y_train, x_val=None, y_val=None,
     return history
 
 
-def save_keras_model(model, history:dict, path:str, hparams:dict):
+def save_keras_model(model, save_model_to:str, save_hparams_to:str=None, history:dict=None, hparams:dict=None, **kwargs):
     try:
-        model.save(make_path(path))
-        for key in history:
-            hparams[key] = history[key]
-        jstr = json.dumps(hparams, indent=4)
-        with open(path+"/hparams.json", "w") as f:
-            f.write(jstr)
+        model.save(make_path(save_model_to), **kwargs)
+        if history is not None:
+            assert hparams is not None, "If training history is to be saved along with the hyperparameters, then `hparams` must be provided."
+            for key in history:
+                hparams[key] = history[key]
+        if hparams is not None:
+            assert save_hparams_to is not None, "`save_hparams_to` must be provided to where the hyperparameters are to be saved."
+            if not save_hparams_to.endswith(".json"):
+                warnings.warn("save_hparams_to does not end with '.json'. A json extension is highly recommended for hyperparameters.", UserWarning)
+            jstr = json.dumps(hparams, indent=4)
+            with open(make_path(save_hparams_to), "w") as f:
+                f.write(jstr)
     except Exception as e:
-        print(e)
         print("Cannot serialize Keras model.")
+        raise e
         
         
 def export_keras_model(model, path:str):
@@ -182,8 +190,8 @@ def export_keras_model(model, path:str):
             export_model(net, make_path(path))
             print("Model exported successfully.")
         except Exception as e2:
-            print(e2)
             print("Cannot export model using Keras2Cpp.")
+            raise e2
     
 
 def test_keras_model_class(model_class, hparams:dict=None, save_and_export:bool=True):
@@ -198,10 +206,12 @@ def test_keras_model_class(model_class, hparams:dict=None, save_and_export:bool=
     y = model(x_train)
     print("\nOutput shape: ", y.shape)
     print("\nTraining model...\n")
+    model_name = model.hparams["model_name"]
     model.train_model(x_train, y_train, x_val, y_val, 
                 verbose=1, 
-                saveto=(("test_"+model.hparams["model_name"]) if save_and_export else None), 
-                export=(("test_"+model.hparams["model_name"]+".model") if save_and_export else None))
+                save_model_to=(f"test_{model_name}" if save_and_export else None),
+                save_hparams_to=(f"test_{model_name}_hparams.json" if save_and_export else None), 
+                export_to_file=(f"test_{model_name}.model" if save_and_export else None))
     print("\nEvaluating model...\n")
     model.evaluate(x_val, y_val, verbose=1)
     print("Done.")

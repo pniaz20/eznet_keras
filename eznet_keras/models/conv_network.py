@@ -79,39 +79,49 @@ class Conv_Network(KerasSmartModel):
     
     
     def __init__(self, hparams:dict=None):
-        """Standard Convolutional Neural Network, containing convolutional blocks followed by fully-connected blocks. It supports 1D, 2D, and 3D convolutions, and can be used for 
-        image classification, timeseries classification, video classification, and so forth. The module can easily be trained and evaluated using its own methods,
-        because it inherits from `KerasSmartModel`. The architecture consists of conv blocks followed by dense blocks. Each conv block is assumed to contain a convolution layer, 
-        followed optionally be a normalization layer, an activation, pooling, and finally a dropout or spatial dropout layer. Each dense block is assumed to contain a dense layer,
-        followed optionally be a normalziation layer, an activation, and a dropout layer. Cnovolution blocks are mandatory, but Dense layers and an output layer are optional.
-        Using this class, any kind of serial CNN architecture can be built. However, no parallelism or skip connections are supported in the architecture.
+        """Standard Convolutional Neural Network, containing convolutional blocks followed by fully-connected blocks. It supports 1D, 2D, and 3D
+        convolutions, and can be used for image classification, timeseries classification, video classification, and so forth.
+        The module can easily be trained and evaluated using its own methods, because it inherits from `KerasSmartModel`.
+        The architecture consists of conv blocks followed by dense (fully connected) blocks. Each conv block is assumed to contain a convolution
+        layer, followed optionally be a normalization layer, an activation, pooling, and finally a dropout or spatial dropout layer.
+        Each dense block is assumed to contain a dense layer, followed optionally be a normalziation layer, an activation, and a dropout layer.
+        Convolution blocks are mandatory, but Dense layers and an output layer are optional.
+        Using this class, any kind of serial CNN architecture can be built. However, no parallelism or skip connections are supported in the
+        architecture.
 
         ### Usage
 
         `model = Conv_Network(hparams)` where `hparams` is dictionary of hyperparameters containing the following keys. 
         
         - Inspect the `sample_hparams` class attribute for a template of the hyperparameters dictionary.
-        - Many keys, especially those that have "(list of)" in their description, can be either scalar items or lists of items. If they are scalar, they will be broadcasted to all 
-          blocks. If they are lists, they must have the same length as the number (depth) of convolutional blocks, i.e. `num_conv_blocks` hyperparameter.
-        - Every block by default is assumed to have a convolution operation, a normalization layer, an activation, some form of pooling, and finally a dropout or spatial dropout. 
-          For every convolutional block, the convolution operation is mandatory but the rest are optional. Thsi way, any kind of CNN with any (fully serial) architecture can be 
-          built. If the key to some hyperparameter is a list, it must have a length equal to the number of convolutional blocks, that is, the `num_conv_blocks` hyperparameter. 
-          There must be one item per convolutional block. `None` is typically put for every block that doens't have that layer or that hyperparameter is inapplicable to that block.
-          Also note that we assume every convolutional block has a spatial dropout layer followed by a normal dropout layer, but this is not common in reality, which means for 
-          blocks that have spatial dropout the normal dropout rate should be `None`, and vice versa.
-        - The Training Procedure section of the hyperparameters are optional, and will only be used by the parent class `KerasSmartModel` if the model is trained using its methods.
-          Otherwise, it is not necessary at all.
-        - Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer, and do not accept any kwargs. Activation layers
-          come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be wrapped in an `Activation` layer. Activation functions all have lower-case
-          names, but activation layers are classes and have every-word-capitalized names. We will use this as a clue to recognize what the user wants, and perform accordingly.
-          Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and `tf.keras.layers.ReLU` layer). 
-          However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`), and some are only available as layers 
-          (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
+        - Many keys, especially those that have "(list of)" in their description, can be either scalar items or lists of items.
+          If they are scalar, they will be broadcasted to all blocks. If they are lists, they must have the same length as the number (depth) of
+          convolutional blocks, i.e. `num_conv_blocks` hyperparameter.
+        - Every block by default is assumed to have a convolution operation, a normalization layer, an activation, some form of pooling, and finally
+          a dropout or spatial dropout. 
+          For every convolutional block, the convolution operation is mandatory but the rest are optional. This way, any kind of CNN with any
+          (fully serial) architecture can be built. If the key to some hyperparameter is a list, it must have a length equal to the number of
+          convolutional blocks, that is, the `num_conv_blocks` hyperparameter. 
+          There must be one item per convolutional block. `None` is typically put for every block that doesn't have that layer or that hyperparameter
+          is inapplicable to that block.
+          Also note that we assume every convolutional block has a spatial dropout layer followed by a normal dropout layer, but this is not common
+          in reality, which means for blocks that have spatial dropout the normal dropout rate should be `None`, and vice versa.
+        - The Training Procedure section of the hyperparameters are optional, and will only be used by the parent class `KerasSmartModel` if the
+          model is trained using its methods. Otherwise, it is not necessary at all.
+        - Activation functions come from `tf.keras.activations` and need to be wrapped in a `tf.keras.layers.Activation` layer, and do not accept any
+          kwargs. Activation layers come from `tf.keras.layers`, can accept kwargs in their constructors, and do not need to be wrapped in an
+          `Activation` layer. Activation functions all have lower-case names, but activation layers are classes and have every-word-capitalized
+          names. We will use this as a clue to recognize what the user wants, and perform accordingly.
+          Most activation layers also have correpsonding activation functions (like `tf.keras.activations.relu` function and
+          `tf.keras.layers.ReLU` layer). However, some activations are only available as functions (such as `tf.keras.activations.sigmoid`),
+          and some are only available as layers (such as `tf.keras.layers.LeakyReLU`). Choose accordingly.
 
         #### I/O shapes
         
-        - `input_shape` (list): Input shape *WITHOUT* the batch dimension. For instance, for 2D images, input should be [N, H, W, C], therefore `input_shape` should be [H, W, C].
-        - `output_shape` (int): Output shape *WITHOUT* the batch dimension. For instance, for K-class classification, model outputs can be [N, K], so `output_shape` should be [K].
+        - `input_shape` (list): Input shape *WITHOUT* the batch dimension. For instance, for 2D images, input should be [N, H, W, C],
+          therefore `input_shape` should be [H, W, C].
+        - `output_shape` (int): Output shape *WITHOUT* the batch dimension. For instance, for K-class classification, model outputs can be [N, K],
+          so `output_shape` should be [K].
             
         #### Convolution blocks
         
@@ -129,48 +139,59 @@ class Conv_Network(KerasSmartModel):
         - `conv_stride` (int|list): (list of) Strides of convolution layers. Format is as `conv_kernel_size`. Defaults to `1`.
         - `conv_dilation` (int|list): (list of) Dilations of convolution layers. Format is as `conv_kernel_size`. Defaults to `1`.
         - `conv_activation` (str|list): (list of) activations of the convolution blocks. Defaults to None.
-            For each block, this entry can be an activation function ("relu", "sigmoid", "tanh", etc.), an activation layer ("ReLU", "LeakyReLU", "Softmax", etc.), or a custom
-            Layer class (not instance). `None` will assume no activation for the convolution layer.
-        - `conv_activation_params` (dict|list): (list of) dicts for the convolution activation constructors. Defaults to None. This will be ignored if lower-case activation
-            function names are provided. This is because in Keras, activation layers are classes with constructors, but activation functions are just functions, and have lower-case
-            names as mentioned earlier. By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
-        - `conv_norm_layer_type` (str|list): (list of) types of normalization layers to use in the conv blocks. Examples: 'BatchNormalization', 'LayerNormalization', etc.
-            Defaults to None. Instead of a string, it can also be a custom Keras Layer class (not instance).
+            For each block, this entry can be an activation function ("relu", "sigmoid", "tanh", etc.), an activation layer 
+            ("ReLU", "LeakyReLU", "Softmax", etc.), or a custom Layer class (not instance).
+            `None` will assume no activation for the convolution layer.
+        - `conv_activation_params` (dict|list): (list of) dicts for the convolution activation constructors. Defaults to None.
+            This will be ignored if lower-case activation
+            function names are provided. This is because in Keras, activation layers are classes with constructors, but activation functions are
+            just functions, and have lower-case names as mentioned earlier. By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
+        - `conv_norm_layer_type` (str|list): (list of) types of normalization layers to use in the conv blocks. Examples: 'BatchNormalization',
+            'LayerNormalization', etc. Defaults to None. Instead of a string, it can also be a custom Keras Layer class (not instance).
         - `conv_norm_layer_position` ("before"|"after"|None|list): (list of) positions of the normalization layers in the 
             convolutional blocks relative to the activation functions. Defaults to "before". If it is a list, it should be a list of strings of the same length as `num_conv_blocks`
         - `conv_norm_layer_params` (dict|list): (list of) kwargs dicts for the convolution normalization layers' constructors. Defaults to None.    
         - `conv_dropout` (float|list): (list of) Dropout rates of the convolution blocks. Defaults to None.
         - `conv_spatial_dropout` (float|list): (list of) Spatial dropout rates of the convolution blocks. Defaults to None.
-        - `pool_type` (str|list): (list of) types of pooling layers. "Max", "Avg", "GlobalMax", and "GlobalAvg" are acceptable. Defaults to None, in which case there will be no 
-            pooling layer. Insetad of the strings mentioned above, a custom Keras Layer class (not instance) can also be provided. In this case, one should note that the pooling
-            hyperparameters below will be ignored, and the custom pooling layer will be constructed with the `pool_params` kwargs only. Also, in this case, image dimensions will
-            not be calculated for this pooling layer because it is unknown since it is a custom layer.
-        - `pool_kernel_size` (int|list): (list of) kernel sizes of the pooling layers, with similar format to `conv_kernel_size`. Again, it can be a list of integers, where every
-            integer will be broadcasted to all dimensions, a list of tuples of integers for 2D or 3D images, or an integer to be boradcasted across dimensions and conv blocks.
+        - `pool_type` (str|list): (list of) types of pooling layers. "Max", "Avg", "GlobalMax", and "GlobalAvg" are acceptable.
+            Defaults to None, in which case there will be no pooling layer. Instead of the strings mentioned above, a custom Keras Layer class
+            (not instance) can also be provided. In this case, one should note that the pooling
+            hyperparameters below will be ignored, and the custom pooling layer will be constructed with the `pool_params` kwargs only.
+            Also, in this case, image dimensions will not be calculated for this pooling layer because it is unknown since it is a custom layer.
+        - `pool_kernel_size` (int|list): (list of) kernel sizes of the pooling layers, with similar format to `conv_kernel_size`.
+            Again, it can be a list of integers, where every integer will be broadcasted to all dimensions, a list of tuples of integers for
+            2D or 3D images, or an integer to be boradcasted across dimensions and conv blocks.
         - `pool_padding` (str|list): (list of) paddings of the pooling layers.
         - `pool_stride` (int|list): (list of) strides of the pooling layers.
         - `pool_params` (dict|list): (list of) kwargs dicts for the pooling layers' constructors.
         - `min_image_size` (int): Minimum size of the image to be reduced to in convolutions and poolings.
             After this point, the padding and striding will be chosen such that image size does not decrease further. Defaults to 1.
-        - `flatten_before_dense` (bool): Whether to flatten the output of the convolutional blocks before the dense blocks. If it is False, all dense layers (if
-            any) will be applied to all pixels, acting on channels. If this argument is not provided, the default will depend on whether there are dense layers after conv layers,
-            in which case `dense_depth` would be greater than 0 and the default would be True, or not, in which case the default would be False since the absence of dense layers
-            negates any reason for flattening. Defaults to None.
+        - `flatten_before_dense` (bool): Whether to flatten the output of the convolutional blocks before the dense blocks.
+            If it is False, all dense layers (if any) will be applied to all pixels, acting on channels. If this argument is not provided, the default will depend on whether there are dense layers after conv layers,
+            in which case `dense_depth` would be greater than 0 and the default would be True, or not, in which case the default would be
+            False since the absence of dense layers negates any reason for flattening. Defaults to None.
             
         #### Dense blocks
         
-        - `dense_width` ("auto"|int|list): Width of the hidden layers of the Dense network. "auto", a number (for all of them) or a list holding width of each hidden layer.
+        - `dense_width` ("auto"|int|list): Width of the hidden layers of the Dense network. "auto", a number (for all of them) or a list
+            holding width of each hidden layer.
             If "auto", it will start with the output size of the Flatten() layer, halving at every Dense block.
-        - `dense_depth` (int): Depth (number of hidden layers) of the Dense network. `0` will mean no hidden layers, meaning Flatten will be directly followed by the output layer.
+        - `dense_depth` (int): Depth (number of hidden layers) of the Dense network. `0` will mean no hidden layers,
+            meaning Flatten will be directly followed by the output layer.
         - `dense_params` (dict): (list of) kwargs dict to pass to the dense layer constructor in each block. Defaults to None.
-        - `dense_activation` (str|list): (list of) activation function for hidden layers of the Dense network. These can be activation functions ("relu", "sigmoid", "tanh", etc.),
-            activation layers ("ReLU", "LeakyReLU", "Softmax", etc.), or custom Layer classes (not instances). Defaults to None, in which case no activation function will be used.
-        - `dense_activation_params` (dict|list): (list of) dicts for the dense activation functions' constructors. Ignored if lower-case activation functions are provided.
+        - `dense_activation` (str|list): (list of) activation function for hidden layers of the Dense network.
+            These can be activation functions ("relu", "sigmoid", "tanh", etc.),
+            activation layers ("ReLU", "LeakyReLU", "Softmax", etc.), or custom Layer classes (not instances). Defaults to None,
+            in which case no activation function will be used.
+        - `dense_activation_params` (dict|list): (list of) dicts for the dense activation functions' constructors.
+            Ignored if lower-case activation functions are provided.
             By the way, the slope of the negative section in `LeakyReLU` is `alpha`.
-        - `dense_norm_layer_type` (str|list): (list of) types of normalization layers to use in the dense blocks. Examples: 'BatchNormalization', 'LayerNormalization', etc.
-            Defaults to None, in which case no normalization layer will be used. Instead of strings, custom Keras Layer classes (not instances) can also be provided.
-        - `dense_norm_layer_position` ("before"|"after"|list): (list of) positions of the normalization layers in the dense blocks relative to the activation functions. 
-            Defaults to "before". If it is a list, it should be a list of strings of the same length as `dense_depth`.
+        - `dense_norm_layer_type` (str|list): (list of) types of normalization layers to use in the dense blocks. Examples:
+            'BatchNormalization', 'LayerNormalization', etc.
+            Defaults to None, in which case no normalization layer will be used. Instead of strings, custom Keras Layer classes (not instances)
+            can also be provided.
+        - `dense_norm_layer_position` ("before"|"after"|list): (list of) positions of the normalization layers in the dense blocks relative to the
+            activation functions. Defaults to "before". If it is a list, it should be a list of strings of the same length as `dense_depth`.
         - `dense_norm_layer_params` (dict|list): (list of) kwargs dict for the dense normalization layers' constructors.
         - `dense_dropout` (float|list): (list of) Dropout rates (if any) for the hidden layers of the Dense network.
         - `include_output_layer` (bool): Whether to include an output layer. Defaults to True.
@@ -180,7 +201,8 @@ class Conv_Network(KerasSmartModel):
             For classification problems, you may want to choose "sigmoid" or "softmax".
             That being said, you usually don't need to specify an activation for the output layer at all, if e.g. 'from_logits' is used.
             For regression problems, no activation is needed. It is by default linear, unless you want to manually specify an activation.
-        - `output_activation_params` (dict): Dictionary of parameters for the output activation function's constructor. Ignored if a lower-case function name is provided.
+        - `output_activation_params` (dict): Dictionary of parameters for the output activation function's constructor.
+            Ignored if a lower-case function name is provided.
         
         #### Training procedure
         
@@ -195,21 +217,28 @@ class Conv_Network(KerasSmartModel):
         - `l2_reg` (float): L2 regularization parameter.
         - `l1_reg` (float): L1 regularization parameter.
         - `loss_function` (str): Loss function. It can be a lower-case name such as "mse", "binary_crossentropy", "categorical_crossentropy", etc.,
-            the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss class (not instance).
-        - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a lower-case name string.
-        - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as "mse" or "accuracy", the name of a 
-            `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class (not instance).
-        - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any. Ignored for every metric that is a lower-case name string.
+            the name of a `tf.keras.losses` class such as `BinaryCrossentropy`, `CategoricalCrossentropy`, `MeanSquaredError', etc., or a valid loss
+            class (not instance).
+        - `loss_function_params` (dict): Additional kwargs parameters of the loss function constructor, if any. Ignored if the loss function is a
+            lower-case name string.
+        - `metrics` (list): list of metrics for Keras compilation. Each member of the list can be a lower-case metric name such as
+            "mse" or "accuracy", the name of a `tf.keras.metrics` class such as `Accuracy`, `MeanSquaredError`, etc., or a valid metric class
+            (not instance).
+        - `metrics_params` (list): (list of) additional kwargs parameters of the metrics constructors, if any.
+            Ignored for every metric that is a lower-case name string.
             If this entry is a single dicitonary rather than a list, it will be broadcast to all metrics in the metrics list.
-        - `validation_data` (tuple): Validation data, if any. It should be a tuple of `(portion, from_dataset)`. For instance, `[0.05, 'testset']` means 5% of the testset will be 
-            used for validation. The second element of the tuple can only be `'trainset'` and `'testset'`. The first element must be a float between 0 and 1. 
+        - `validation_data` (tuple): Validation data, if any. It should be a tuple of `(portion, from_dataset)`.
+            For instance, `[0.05, 'testset']` means 5% of the testset will be used for validation.
+            The second element of the tuple can only be `'trainset'` and `'testset'`. The first element must be a float between 0 and 1. 
             If the second element is not specified, testset will be used by default.
         - `checkpoint_path` (str): Path to the directory where checkpoints will be saved at every epoch.
         - `early_stopping_monitor` (str): Monitor whose critical value will cause early stopping. Default is 'loss', but 'val_loss' is typically used.
-        - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping. Deafults to 'min' for any error. 'max' is for accuracy, etc.
+        - `early_stopping_mode` (str): Mode of the parameter whose critical value will be used for early stopping.
+            Defaults to 'min' for any error. 'max' is for accuracy, etc.
         - `early_stopping_value` (float): Value of the monitor at which point training will stop because the critical value has been reached.
         - `other_callbacks` (list): List of other callbacks to be used during training, if any. Defaults to None.
-        - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`. Defaults to None.
+        - `custom_schedule` (schedule): Custom learning rate schedule inheriting from `tf.keras.optimizers.schedules.LearningRateSchedule`.
+            Defaults to None.
         
         
         ### Returns
@@ -315,7 +344,7 @@ class Conv_Network(KerasSmartModel):
             if i==0:
                 _kwargs.update({'input_shape':self._input_shape})
             d = add_conv_block(**_kwargs)
-            self.net = d['model']
+            # self.net = d['model']
             output_image = d['output_image']
             self.size_list.append(output_image+[out_channels])
             # in_channels = out_channels

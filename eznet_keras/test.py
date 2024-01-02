@@ -32,8 +32,10 @@ def test_dense_block():
     print("Output shape: ", y.shape)
 
 def test_conv_block():
-    conv_block = Conv_Block([28,28,3], 32, conv_dim=2, input_image=[28,28], conv_kernel_size=3, conv_padding='valid', conv_stride=1, conv_dilation=1, conv_params=None, 
-                            conv_activation='relu', conv_activation_params=None, norm_layer_position='before', norm_layer_type='BatchNormalization', norm_layer_params=None, 
+    conv_block = Conv_Block([28,28,3], 32, conv_dim=2, input_image=[28,28], conv_kernel_size=3, conv_padding='valid', conv_stride=1, 
+                            conv_dilation=1, conv_params=None, 
+                            conv_activation='relu', conv_activation_params=None, norm_layer_position='before', norm_layer_type='BatchNormalization', 
+                            norm_layer_params=None, 
                             pool_type='Max', pool_kernel_size=2, pool_padding='valid', pool_stride=1, pool_params=None, dropout=0.1, min_image_dim=8,
                             kernel_regularizer=tf.keras.regularizers.L2(0.0001))
     print(conv_block)

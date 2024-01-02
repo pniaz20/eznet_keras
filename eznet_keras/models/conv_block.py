@@ -151,7 +151,8 @@ class Conv_Block(tf.keras.layers.Layer):
 
 
 
-def add_conv_block(model:tf.keras.models.Sequential, out_channels:int=None, input_shape:list=None, conv_dim:int=1, input_image:list=[30], conv_kernel_size=3, conv_padding='valid',
+def add_conv_block(model:tf.keras.models.Sequential, out_channels:int=None, input_shape:list=None, conv_dim:int=1, 
+    input_image:list=[30], conv_kernel_size=3, conv_padding='valid',
     conv_stride=1, conv_dilation=1, conv_params:dict=None, conv_activation:str='ReLU', conv_activation_params:dict=None, norm_layer_position:str=None, norm_layer_type:str=None, 
     norm_layer_params:dict=None, pool_type:str=None, pool_kernel_size=2, pool_padding:str='valid', pool_stride=1, pool_params:dict=None, dropout:float=None, 
     spatial_dropout:float=None, min_image_dim:int=1, kernel_regularizer:tf.keras.regularizers.Regularizer=None):

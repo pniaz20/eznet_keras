@@ -156,6 +156,7 @@ class KerasSmartModel(tf.keras.models.Model):
     def from_config(cls, config):
         return cls(config['hparams'])
     
+    
     def compile_model(self, num_samples=None):
         """Compiles Keras Smart Model based on its constructor hyperparameters
 
@@ -166,7 +167,8 @@ class KerasSmartModel(tf.keras.models.Model):
                             _loss=self._loss_function, _metrics=self._metrics, _optimizer_params=self._optimizer_params,
                             _loss_params=self._loss_function_params, _metrics_params=self._metrics_params, 
                             _exponential_decay_rate=self._exponential_decay_rate, num_samples=num_samples, custom_schedule=self._custom_schedule)
-            
+    
+    
     def fit_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, **kwargs):
         """Fit (train) the Keras Smart Model to training data.
 
@@ -186,11 +188,14 @@ class KerasSmartModel(tf.keras.models.Model):
             self._batch_size, self._epochs, self._callbacks, verbose, **kwargs)
         return self.history
 
+    
     def __str__(self):
         s = "KerasSmartModel with the following attributes:\n" + str(self.hparams)
         return s
     
-    def train_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, saveto:str=None, export:str=None, **kwargs):
+    
+    def train_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, save_model_to:str=None, save_hparams_to:str=None, 
+                    export_to_file:str=None, save_kwargs:dict={}, **kwargs):
         """Train the model according to its hyperparameters.
 
         ### Args:
@@ -199,10 +204,14 @@ class KerasSmartModel(tf.keras.models.Model):
             - `x_val` (numpy array): Validation inputs
             - `y_val` (numpy array): Validation target outputs
             - `verbose` (int, optional): Verbosity of training passed to Keras fit function. Defaults to 1.
-            - `saveto` (str, optional): Save Keras model in path. Defaults to None.
-            - `export` (str, optional): Save Keras model in .model file using keras2cpp for later use in C++. Defaults to None.
+            - `save_model_to` (str, optional): Save Keras model in path. Defaults to None. Path does not need to exist.
+              The path can have no extension, in which case a SavedModel format will be used, or it can have a .h5 extension, in which case a HDF5 format will be used, or it can have a .keras extension, in which case the new Keras format will be used.
+            - `save_hparams_to` (str, optional): Save hyperparameters to path. Defaults to None. Path does not need to exist.
+            - `export_to_file` (str, optional): Save Keras model in .model file using keras2cpp for later use in C++. Defaults to None.
+              Path does not need to exist.
+            - `save_kwargs` (dict, optional): Additional kwargs to pass to the `tf.keras.Model.save()` function. Defaults to None.
             
-            Other keyword arguments are passed to the Keras fit function.
+            Other keyword arguments are passed to the Keras `tf.keras.Model.fit()` function.
 
         ### Returns:
             Nothing. It modifies the "net" attribute of the model, and the history of the training in self.history.
@@ -211,10 +220,17 @@ class KerasSmartModel(tf.keras.models.Model):
         N = x_train.shape[0]
         self.compile_model(num_samples=N)
         _ = self.fit_model(x_train, y_train, x_val, y_val, verbose=verbose, **kwargs)
-        if saveto:
-            save_keras_model(self.net, self.history.history, saveto, self.hparams)
-        if export:
-            export_keras_model(self.net, export)
+        if save_model_to:
+            save_keras_model(
+                model=self.net, 
+                history=self.history.history, 
+                save_model_to=save_model_to, 
+                save_hparams_to=save_hparams_to, 
+                hparams=self.hparams,
+                **save_kwargs)
+        if export_to_file:
+            export_keras_model(self.net, export_to_file)
+
 
     def plot_history(self, metrics=['loss'], fig_title='model loss', saveto:str=None, close_after_finish:bool=True):
         """Plot the training history of the model after training is done.
@@ -226,6 +242,7 @@ class KerasSmartModel(tf.keras.models.Model):
             - `close_after_finish` (bool, optional): Clsoe the figure after saving it with `plt.close()`. Defaults to True. Only applicable if `saveto` is provided.
         """
         plot_keras_model_history(self.history.history, metrics, fig_title, saveto, close_after_finish)
+      
         
     def evaluate(self, *args, **kwargs):
         """Evaluate model performance on test data.
@@ -235,6 +252,7 @@ class KerasSmartModel(tf.keras.models.Model):
         """
         return self.net.evaluate(*args, **kwargs)
     
+    
     def predict(self, *args, **kwargs):
         """Predict the outputs given inputs
 
@@ -242,6 +260,7 @@ class KerasSmartModel(tf.keras.models.Model):
             Teh same thing that Keras predict returns.
         """
         return self.net.predict(*args, **kwargs)
+    
     
     def make_regularizer(self):
         if self._l1_reg is not None and self._l1_reg > 0 and (self._l2_reg is None or self._l2_reg == 0): # Only do L1 regularization
@@ -252,4 +271,36 @@ class KerasSmartModel(tf.keras.models.Model):
             return tf.keras.regularizers.L1L2(self._l1_reg, self._l2_reg)
         else:
             return None 
+    
+    
+    def save_model(self, save_model_to:str=None, save_hparams_to:str=None, export_to_file:str=None, **kwargs):
+        """Save the model to file.
+
+        ### Args:
+            - `save_model_to` (str, optional): Save Keras model in path. Defaults to None. Path does not need to exist.
+              The path can have no extension, in which case a SavedModel format will be used, or it can have a .h5 extension, in which case a HDF5 format will be used, or it can have a .keras extension, in which case the new Keras format will be used.
+            - `save_hparams_to` (str, optional): Save hyperparameters to path. Defaults to None. Path does not need to exist.
+            - `export_to_file` (str, optional): Save Keras model in .model file using keras2cpp for later use in C++. Defaults to None.
+              Path does not need to exist.
+            - **kwargs: Additional kwargs to pass to the `tf.keras.Model.save()` function. Defaults to None.
+        """
+        save_keras_model(
+            model=self.net, 
+            history=None, 
+            save_model_to=save_model_to, 
+            save_hparams_to=save_hparams_to, 
+            hparams=self.hparams,
+            **kwargs)
+        if export_to_file:
+            export_keras_model(self.net, export_to_file)
+    
+    
+    def export_model(self, export_to_file:str):
+        """Export the model to file.
+
+        ### Args:
+            - `export_to_file` (str): Save Keras model in .model file using keras2cpp for later use in C++. Path does not need to exist.
+        """
+        export_keras_model(self.net, export_to_file)
+        
 
