@@ -85,7 +85,8 @@ y_train = ...
 x_test = ...
 y_test = ...
 
-model.train_model(x_train, y_train, x_test, y_test, verbose=1, saveto="my_model", export="my_model.model")
+model.train_model(x_train, y_train, x_val=None, y_val=None, verbose=1, save_model_to="my_model", save_hparams_to="my_model_hparams.json",
+    export_to_file="my_model.model", save_kwargs={})
 model.plot_history(metrics=['loss','val_loss'], fig_title='model loss', saveto="training_history.png")
 ```
 
@@ -101,10 +102,11 @@ A few implementation notes:
 - The `from_config()` method gets a config that must have the `hparams` key, whose value is the same as the `hparams` input of the constructor.
 - `model.summary()` will return `model.net.summary()`. Other training and evaluation functions will also use the `self.net` attribute.
 - The `self.history` attribute is `None` at the beginning, but is set to the return value of the `fit()` method.
-- The `save_to` argument of the `model.train()` function can be used to save the trained model as `.h5` file or as a folder in the TensorFlow **SavedModel** format.
-- The `export` argument in the `model.train()` function (attempts to) use Gosha20777's [Keras2Cpp](https://github.com/gosha20777/keras2cpp) package to export the model
+- The `save_model_to` argument of the `model.train_model()` function can be used to save the trained model as `.h5` file or as a folder in the TensorFlow **SavedModel** format.
+- The `save_hparams_to` argument of the `model.train_model()` function can be used to save the trained model's hyperparameter dictionary in a text file using the json format.
+- The `export_to_file` argument in the `model.train_model()` function (attempts to) use Gosha20777's [Keras2Cpp](https://github.com/gosha20777/keras2cpp) package to export the model
   to a `.model` file which can be imported in a `C++ 2017` compiler to implement the same model in C++.
-  Comes in handy if you work with robotic/mechatronic hardware that use limited versions and builds of C++ like I do :).
+  Comes in handy if you work with robotic/mechatronic hardware that use limited versions and builds of C++ like I do :-).
 
 ### 2-2- Utility Functions for Manipulating Keras Models
 
