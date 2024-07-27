@@ -170,7 +170,8 @@ class KerasSmartModel(tf.keras.models.Model):
     
     
     def fit_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, **kwargs):
-        """Fit (train) the Keras Smart Model to training data.
+        """Fit (train) the Keras Smart Model to training data using pure numpy arrays.
+        NOTE: Use `fit_model_with_dataset` if you use tf.data.Dataset objects rather than pure numpy arrays.
 
         Args:
             x_train (array): Training inputs
@@ -187,6 +188,25 @@ class KerasSmartModel(tf.keras.models.Model):
         self.history = fit_keras_model(self.net, x_train, y_train, x_val, y_val, 
             self._batch_size, self._epochs, self._callbacks, verbose, **kwargs)
         return self.history
+    
+    
+    def fit_model_with_dataset(self, train_dataset, val_dataset=None, verbose:int=1, **kwargs):
+        """Fit (train) the Keras Smart Model to training data using datasets rather than pure numpy arrays.
+        NOTE: Use `fit_model` if you want to use pure numpy arrays as inputs to the model.
+
+        Args:
+            train_dataset (tf.data.Dataset): Training dataset
+            val_dataset (tf.data.Dataset, optional): Validation dataset. Defaults to None.
+            verbose (int, optional): Verbosity passed to the Keras Fit function. Defaults to 1.
+            
+            Other keyword arguments are passed to the Keras fit function.
+
+        Returns:
+            History object returned by the Keras fit function
+        """
+        self.history = fit_keras_model_with_dataset(self.net, train_dataset, val_dataset, 
+            self._batch_size, self._epochs, self._callbacks, verbose, **kwargs)
+        return self.history
 
     
     def __str__(self):
@@ -196,13 +216,14 @@ class KerasSmartModel(tf.keras.models.Model):
     
     def train_model(self, x_train, y_train, x_val=None, y_val=None, verbose:int=1, save_model_to:str=None, save_hparams_to:str=None, 
                     export_to_file:str=None, save_kwargs:dict={}, **kwargs):
-        """Train the model according to its hyperparameters.
+        """Train the model according to its hyperparameters, using pure numpy arrays.
+        NOTE: Use `train_model_with_dataset` if you use tf.data.Dataset objects rather than pure numpy arrays.
 
         ### Args:
             - `x_train` (numpy array): Training inputs
             - `y_train` (numpy array): Training target outputs
-            - `x_val` (numpy array): Validation inputs
-            - `y_val` (numpy array): Validation target outputs
+            - `x_val` (numpy array, optional): Validation inputs. Defaults to None.
+            - `y_val` (numpy array, optional): Validation target outputs. Defaults to None.
             - `verbose` (int, optional): Verbosity of training passed to Keras fit function. Defaults to 1.
             - `save_model_to` (str, optional): Save Keras model in path. Defaults to None. Path does not need to exist.
               The path can have no extension, in which case a SavedModel format will be used, or it can have a .h5 extension, in which case a HDF5 format will be used, or it can have a .keras extension, in which case the new Keras format will be used.
@@ -230,6 +251,56 @@ class KerasSmartModel(tf.keras.models.Model):
                 **save_kwargs)
         if export_to_file:
             export_keras_model(self.net, export_to_file)
+    
+    
+    
+    def train_model_with_dataset(self, train_dataset, val_dataset, verbose:int=1, save_model_to:str=None, save_hparams_to:str=None, 
+                    export_to_file:str=None, save_kwargs:dict={}, **kwargs):
+        """Train the model according to its hyperparameters using tf.data.Dataset objects.
+        NOTE: Use `train_model` if you use pure numpy arrays rather than tf.data.Dataset objects.
+
+        ### Args:
+            - `train_dataset` (tf.data.Dataset): Training dataset
+            - `val_dataset` (tf.data.Dataset, optional): Validation dataset. Defaults to None.
+            - `verbose` (int, optional): Verbosity of training passed to Keras fit function. Defaults to 1.
+            - `save_model_to` (str, optional): Save Keras model in path. Defaults to None. Path does not need to exist.
+              The path can have no extension, in which case a SavedModel format will be used, or it can have a .h5 extension, in which case a HDF5 format will be used, or it can have a .keras extension, in which case the new Keras format will be used.
+            - `save_hparams_to` (str, optional): Save hyperparameters to path. Defaults to None. Path does not need to exist.
+            - `export_to_file` (str, optional): Save Keras model in .model file using keras2cpp for later use in C++. Defaults to None.
+              Path does not need to exist.
+            - `save_kwargs` (dict, optional): Additional kwargs to pass to the `tf.keras.Model.save()` function. Defaults to None.
+            
+            Other keyword arguments are passed to the Keras `tf.keras.Model.fit()` function.
+
+        ### Returns:
+            Nothing. It modifies the "net" attribute of the model, and the history of the training in self.history.
+        
+        """
+        try:
+            N = tf.data.experimental.cardinality(train_dataset).numpy()
+        except Exception as e:
+            print("Error in eznet_keras.models.keras_smart_module.train_model_with_dataset():")
+            print(e)
+            print("Cannot determine the number of samples in the training dataset."
+                  "This is only necessary for determining number of iterations per epoch for learning rate scheduling."
+                  "Without the number of samples being known, learning rate scheduling might be less efficient because"
+                  "number of iterations per epoch would be set to 1.")
+            N = None
+            
+        
+        self.compile_model(num_samples=N)
+        _ = self.fit_model_with_dataset(train_dataset, val_dataset, verbose=verbose, **kwargs)
+        if save_model_to:
+            save_keras_model(
+                model=self.net, 
+                history=self.history.history, 
+                save_model_to=save_model_to, 
+                save_hparams_to=save_hparams_to, 
+                hparams=self.hparams,
+                **save_kwargs)
+        if export_to_file:
+            export_keras_model(self.net, export_to_file)
+
 
 
     def plot_history(self, metrics=['loss'], fig_title='model loss', saveto:str=None, close_after_finish:bool=True):

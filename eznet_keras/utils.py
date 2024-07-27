@@ -159,6 +159,26 @@ def fit_keras_model(model, x_train, y_train, x_val=None, y_val=None,
     return history
 
 
+def fit_keras_model_with_dataset(model, train_dataset, val_dataset=None, 
+    _batchsize:int=None, _epochs:int=1, _callbacks:list=None, verbose:int=1, **kwargs):
+    while True:
+        try:
+            history = model.fit(train_dataset, batch_size=_batchsize, epochs=_epochs, 
+                validation_data=val_dataset, verbose=verbose, 
+                callbacks=_callbacks, **kwargs)
+            break
+        except Exception as e:
+            print(e)
+            print(("\nTraining failed with batchsize={}. "+\
+                "Trying again with a lower batchsize...").format(_batchsize))
+            _batchsize = _batchsize // 2
+            if _batchsize < 2:
+                raise ValueError("Batchsize too small. Training failed.")
+    return history
+
+
+
+
 def save_keras_model(model, save_model_to:str, save_hparams_to:str=None, history:dict=None, hparams:dict=None, **kwargs):
     try:
         model.save(make_path(save_model_to), **kwargs)

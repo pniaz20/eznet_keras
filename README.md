@@ -4,8 +4,8 @@ Keras (TensorFlow) implementation of **ezNet** ("easy net"), a package containin
 This implementation is for Keras (Tensorflow). See [Here](https://github.com/pniaz20/eznet_torch) for an identical PyTorch implementation.
 
 Author: Pouya P. Niaz (<pniaz20@ku.edu.tr> , <pouya.p.niaz@gmail.com>)  
-Version: 1.1.2  
-Last Update: January 02, 2024
+Version: 1.1.3  
+Last Update: July 27, 2024
 
 Install with:
 
@@ -17,7 +17,7 @@ pip install eznet-keras
 
 ## 1- Intro
 
-You can build, train and evaluate all manner of Keras models using the utilities in this package.
+You can build, train and evaluate all manner of Tensorflow/Keras models using the utilities in this package.
 Furthermore, there is a collection of basic and widely-used deep learning models ready to be used immediately.
 This package also offers `KerasSmartModel`, a sublass of `tf.keras.Model` that has built-in functions for manipulating its hyperparameters,
 training, evaluation, and testing.
@@ -85,8 +85,14 @@ y_train = ...
 x_test = ...
 y_test = ...
 
+# If you're working with pure numpy arrays as input and output
 model.train_model(x_train, y_train, x_val=None, y_val=None, verbose=1, save_model_to="my_model", save_hparams_to="my_model_hparams.json",
     export_to_file="my_model.model", save_kwargs={})
+# Or, alternatively, if you are working with tf.data.Dataset objects (tensorflow datasets)
+model.train_model_with_dataset(train_dataset, val_dataset=None, verbose=1, save_model_to="my_model", save_hparams_to="my_model_hparams.json",
+    export_to_file="my_model.model", save_kwargs={})
+
+# Plot model learning history
 model.plot_history(metrics=['loss','val_loss'], fig_title='model loss', saveto="training_history.png")
 ```
 
